@@ -30,9 +30,9 @@ impl FieldElement {
         let num = self.num.modpow(&n.to_biguint().unwrap(), &self.prime);
         Self::new(&num, &self.prime)
     }
-    // pub fn value(&self) -> BigUint {
-    //     self.value
-    // }
+    pub fn num_value(&self) -> BigUint {
+        self.num.clone()
+    }
 }
 
 
@@ -63,7 +63,7 @@ impl Sub for FieldElement {
         Self::new(&((a + p - b) % p), &self.prime)
     }
 }
-impl Mul for FieldElement {
+impl Mul<FieldElement> for FieldElement {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
         if self.prime != other.prime {
@@ -72,6 +72,14 @@ impl Mul for FieldElement {
         let prod = self.num * other.num;
         let mod_prod = prod % &self.prime;
 
+        Self::new(&mod_prod, &self.prime)
+    }
+}
+impl Mul<BigUint> for FieldElement {
+    type Output = Self;
+    fn mul(self, coeff: BigUint) -> Self {
+        let prod = self.num * coeff;
+        let mod_prod = prod % &self.prime;
         Self::new(&mod_prod, &self.prime)
     }
 }
