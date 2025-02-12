@@ -1,18 +1,24 @@
-use std::ops::Add;
-use num::BigInt;
+use std::ops::{Add, Mul};
+use num::BigUint;
+use std::fmt;
+use crate::field_element::FieldElement;
+use crate::secp256k1;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Point {
-    x: Option<BigInt>,
-    y: Option<BigInt>,
-    a: BigInt,
-    b: BigInt,
+    x: Option<FieldElement>,
+    y: Option<FieldElement>,
+    a: FieldElement,
+    b: FieldElement,
 }
+
 impl Point {
-    pub fn new(x: &Option<BigInt>, y: &Option<BigInt>, a: &BigInt, b: &BigInt) -> Self {
+    pub fn new(x: &Option<FieldElement>, y: &Option<FieldElement>, a: &FieldElement, b: &FieldElement) -> Self {
         if !x.is_none() && !y.is_none() {
             let x = x.clone().unwrap();
             let y = y.clone().unwrap();
+            let a = a.clone();
+            let b = b.clone();
             if y.pow(2) != x.pow(3) + a * x + b {
                 panic!("Point is not on the curve");
             }
@@ -24,10 +30,36 @@ impl Point {
             b: b.clone()
         }
     }
-}
-impl Point {
+    pub fn new_secp256k1(x: &Option<FieldElement>, y: &Option<FieldElement>) -> Self {
+        let s = secp256k1::Secp256k1::new();
+        let a = FieldElement::new(&s.A, &s.P);
+        let b = FieldElement::new(&s.B, &s.P);
+        if !x.is_none() && !y.is_none() {
+            let x = x.clone().unwrap();
+            let y = y.clone().unwrap();
+            if y.pow(2) != x.pow(3) + a.clone() * x + b.clone() {
+                panic!("Point is not on the curve");
+            }
+        }
+        Point {
+            x: x.clone(),
+            y: y.clone(),
+            a: a,
+            b: b
+        }
+    }
     fn is_inf(&self) -> bool {
         self.x.is_none() && self.y.is_none()
+    }
+}
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match (self.x.as_ref(), self.y.as_ref()) {
+            (Some(x), Some(y)) => write!(f, "({:x}, {:x})", x.num_value(), y.num_value()),
+            (Some(x), None) => write!(f, "({:x}, ∞)", x.num_value()),
+            (None, Some(y)) => write!(f, "(∞, {:x})", y.num_value()),
+            _ => write!(f, "(∞, ∞)")
+        }
     }
 }
 impl Add for Point {
@@ -46,36 +78,36 @@ impl Add for Point {
             Point::new(
                 &None,
                 &None,
-                &BigInt::from(self.a.clone()),
-                &BigInt::from(self.b.clone()),
+                &self.a.clone(),
+                &self.b.clone(),
             )
         } else if self.x != other.x {
             let s = (other.y.clone().unwrap() - self.y.clone().unwrap())/(other.x.clone().unwrap() - self.x.clone().unwrap());
-            let x = &s.pow(2) - self.x.clone().unwrap() - other.x.clone().unwrap();
+            let x = s.pow(2).clone() - self.x.clone().unwrap() - other.x.clone().unwrap();
             let y = s * (self.x.clone().unwrap() - x.clone()) - self.y.clone().unwrap();
             Point::new(
                 &Some(x.clone()),
                 &Some(y.clone()),
-                &BigInt::from(self.a.clone()),
-                &BigInt::from(self.b.clone()),
+                &self.a.clone(),
+                &self.b.clone(),
             )
         } else if self == other {
-            if self.y.clone().unwrap() == BigInt::from(0i32) {
+            if (self.y.clone().unwrap()).num_value() == BigUint::from(0u32) {
                 Point::new(
                     &None,
                     &None,
-                    &BigInt::from(self.a.clone()),
-                    &BigInt::from(self.b.clone()),
+                    &self.a.clone(),
+                    &self.b.clone(),
                 )
             } else {
-                let s = (3*(self.x.clone().unwrap().pow(2)) + self.a.clone())/ (2 * self.y.clone().unwrap());
-                let x = (&s * &s) - 2 * self.x.clone().unwrap();
-                let y = s * (self.x.clone().unwrap() - &x) - self.y.clone().unwrap();
+                let s = ((self.x.clone().unwrap().pow(2)*BigUint::from(3u32)) + self.a.clone())/ (self.y.clone().unwrap()*BigUint::from(2u32));
+                let x = (s.clone() * s.clone()) - self.x.clone().unwrap() * BigUint::from(2u32);
+                let y = s * (self.x.clone().unwrap() - x.clone()) - self.y.clone().unwrap();
                 Point::new(
                     &Some(x),
                     &Some(y),
-                    &BigInt::from(self.a.clone()),
-                    &BigInt::from(self.b.clone()),
+                    &self.a.clone(),
+                    &self.b.clone(),
                 )
             }
         } else {
@@ -83,96 +115,188 @@ impl Add for Point {
         }
     }
 }
+
+impl Mul<BigUint> for Point {
+    type Output = Self;
+
+    fn mul(self, coefficient: BigUint) -> Self {
+        let mut coef = coefficient;
+        let mut current = self.clone();
+        // We start the result at 0, or the point at infinity.
+        let mut result = Point::new(
+            &None,
+            &None,
+            &self.a.clone(),
+            &self.b.clone(),
+        );
+
+        while coef > BigUint::from(0u32) {
+            if &coef & BigUint::from(1u32) == BigUint::from(1u32) {
+                result = result + current.clone();
+            }
+            current = current.clone() + current.clone();
+            coef >>= 1;
+        }
+        result
+    }
+}
 #[cfg(test)]
 mod tests {
+    use num::BigUint;
     use super::*;
     #[test]
-    #[should_panic]
-    fn point_off() {
+    fn point1_on() {
+        let p = 223u32;
         let _p3 = Point::new(
-            &Some(BigInt::from(77i32)),
-            &Some(BigInt::from(77i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
+            &Some(FieldElement::new(&BigUint::from(192u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(105u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
+        );
+
+    }
+    #[test]
+    fn point2_on() {
+        let p = 223u32;
+        let _p3 = Point::new(
+            &Some(FieldElement::new(&BigUint::from(17u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(56u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
+        );
+
+    }
+    #[test]
+    fn point3_on() {
+        let p = 223u32;
+        let _p3 = Point::new(
+            &Some(FieldElement::new(&BigUint::from(1u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(193u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
+        );
+
+    }
+    #[test]
+    #[should_panic]
+    fn point1_off() {
+        let p = 223u32;
+        let _p3 = Point::new(
+            &Some(FieldElement::new(&BigUint::from(200u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(119u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
         );
     }
     #[test]
-    fn point_eq() {
-        let p1 = Point::new(
-            &Some(BigInt::from(3i32)),
-            &Some(BigInt::from(-7i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
+    #[should_panic]
+    fn point2_off() {
+        let p = 223u32;
+        let _p3 = Point::new(
+            &Some(FieldElement::new(&BigUint::from(42u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(99u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
         );
-        assert!(p1 == p1);
-        let p2 = Point::new(
-            &None,
-            &None,
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
-        );
-        assert!(p2 == p2);
     }
     #[test]
-    fn point_add_0() {
-        let p1 = Point::new(
-            &None,
-            &None,
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
-        );
-        let p2 = Point::new(
-            &Some(BigInt::from(2i32)),
-            &Some(BigInt::from(5i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
-        );
-        let p3 = Point::new(
-            &Some(BigInt::from(2i32)),
-            &Some(BigInt::from(-5i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
-        );
-        assert_eq!(p1.clone() + p2.clone(), p2.clone());
-        assert_eq!(p2.clone() + p1.clone(), p2.clone());
-        assert_eq!(p2.clone() + p3.clone(), p1.clone());
+    fn add() {
+        let p = 223u32;
+        let a = FieldElement::new(&BigUint::from(0u32), &BigUint::from(p));
+        let b = FieldElement::new(&BigUint::from(7u32), &BigUint::from(p));
+
+        let mut vectors:Vec<Vec<u32>> = Vec::new();
+        let mut vec:Vec<u32> = Vec::new();
+        vec.push(192);
+        vec.push(105);
+        vec.push(17);
+        vec.push(56);
+        vec.push(170);
+        vec.push(142);
+        vectors.push(vec.clone());
+        let mut vec:Vec<u32> = Vec::new();
+        vec.push(47);
+        vec.push(71);
+        vec.push(117);
+        vec.push(141);
+        vec.push(60);
+        vec.push(139);
+        vectors.push(vec.clone());
+        let mut vec:Vec<u32> = Vec::new();
+        vec.push(143);
+        vec.push(98);
+        vec.push(76);
+        vec.push(66);
+        vec.push(47);
+        vec.push(71);
+        vectors.push(vec.clone());
+        for vec in vectors {
+            let x1 = Some(FieldElement::new(&BigUint::from(vec[0]), &BigUint::from(p)));
+            let y1 = &Some(FieldElement::new(&BigUint::from(vec[1]), &BigUint::from(p)));
+            let x2 = Some(FieldElement::new(&BigUint::from(vec[2]), &BigUint::from(p)));
+            let y2 = &Some(FieldElement::new(&BigUint::from(vec[3]), &BigUint::from(p)));
+            let x3 = Some(FieldElement::new(&BigUint::from(vec[4]), &BigUint::from(p)));
+            let y3 = &Some(FieldElement::new(&BigUint::from(vec[5]), &BigUint::from(p)));
+            let p1 = Point::new(&x1, &y1, &a, &b);
+            let p2 = Point::new(&x2, &y2, &a, &b);
+            let p3 = Point::new(&x3, &y3, &a, &b);
+            assert_eq!(p1+p2, p3);
+        }
     }
     #[test]
-    fn point_add_1() {
-        let p1 = Point::new(
-            &Some(BigInt::from(3i32)),
-            &Some(BigInt::from(7i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
+    fn scalar_mul_1() {
+        let p = 223u32;
+        let point = Point::new(
+            &Some(FieldElement::new(&BigUint::from(15u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(86u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
         );
-        let p2 = Point::new(
-            &Some(BigInt::from(-1i32)),
-            &Some(BigInt::from(-1i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
+        let p_inf = Point::new(
+            &None,
+            &None,
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
         );
-        let p3 = Point::new(
-            &Some(BigInt::from(2i32)),
-            &Some(BigInt::from(-5i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
-        );
-        assert_eq!(p1 + p2, p3);
+        assert_eq!(p_inf, point * BigUint::from(7u32));
     }
     #[test]
-    fn point_add_2() {
-        let p1 = Point::new(
-            &Some(BigInt::from(-1i32)),
-            &Some(BigInt::from(-1i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
+    fn scalar_mul_2() {
+        let p = 223u32;
+        let point = Point::new(
+            &Some(FieldElement::new(&BigUint::from(47u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(71u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
         );
-        let p2 = Point::new(
-            &Some(BigInt::from(18i32)),
-            &Some(BigInt::from(77i32)),
-            &BigInt::from(5i32),
-            &BigInt::from(7i32),
+        let point2 = Point::new(
+            &Some(FieldElement::new(&BigUint::from(47u32), &BigUint::from(p))),
+            &Some(FieldElement::new(&BigUint::from(152u32), &BigUint::from(p))),
+            &FieldElement::new(&BigUint::from(0u32), &BigUint::from(p)),
+            &FieldElement::new(&BigUint::from(7u32), &BigUint::from(p))
         );
-        assert_eq!(p1.clone() + p1, p2);
+        assert_eq!(point2, point * BigUint::from(20u32));
+    }
+    #[test]
+    fn new_secp256k1() {
+        let s = secp256k1::Secp256k1::new();
+        let p = Point::new_secp256k1(
+            &Some(FieldElement::new(&s.GX, &s.P)),
+            &Some(FieldElement::new(&s.GY, &s.P))
+        );
+    }
+    #[test]
+    fn ord() {
+        let s = secp256k1::Secp256k1::new();
+        let p = Point::new_secp256k1(
+            &Some(FieldElement::new(&s.GX, &s.P)),
+            &Some(FieldElement::new(&s.GY, &s.P))
+        );
+        let p_inf = Point::new_secp256k1(
+            &None,
+            &None
+        );
+        println!("{}", p);
+        //assert_eq!(p * s.N, p_inf)
     }
 }
