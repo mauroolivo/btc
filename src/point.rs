@@ -1,8 +1,10 @@
 use std::ops::{Add, Mul};
 use num::BigUint;
+use num::Num;
 use std::fmt;
 use crate::field_element::FieldElement;
 use crate::secp256k1;
+use crate::signature::Signature;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Point {
@@ -32,8 +34,8 @@ impl Point {
     }
     pub fn new_secp256k1(x: &Option<FieldElement>, y: &Option<FieldElement>) -> Self {
         let s = secp256k1::Secp256k1::new();
-        let a = FieldElement::new(&s.A, &s.P);
-        let b = FieldElement::new(&s.B, &s.P);
+        let a = FieldElement::new(&s.a, &s.p);
+        let b = FieldElement::new(&s.b, &s.p);
         if !x.is_none() && !y.is_none() {
             let x = x.clone().unwrap();
             let y = y.clone().unwrap();
@@ -47,6 +49,31 @@ impl Point {
             a: a,
             b: b
         }
+    }
+    pub fn verify(&self, z: &BigUint, signature: &Signature) -> bool {
+        let s256 = secp256k1::Secp256k1::new();
+
+        let n = &s256.n;
+        let s = signature.s();
+        let two = &BigUint::from(2u8);
+        let s_inv = s.modpow(&(n - two), &n);
+
+        // u = z / s
+        let u = z * &s_inv % n;
+
+        // v = r / s
+        let v = signature.r() * &s_inv % n;
+
+        // u*G + v*P should have as the x coordinate, r
+        let s = secp256k1::Secp256k1::new();
+        let g = Point::new_secp256k1(
+            &Some(FieldElement::new(&s.gx, &s.p)),
+            &Some(FieldElement::new(&s.gy, &s.p))
+        );
+        let p = self.clone();
+        let total = g * u + p * v;
+
+        total.x.unwrap().num_value() == signature.r().clone()
     }
     fn is_inf(&self) -> bool {
         self.x.is_none() && self.y.is_none()
@@ -142,6 +169,7 @@ impl Mul<BigUint> for Point {
 }
 #[cfg(test)]
 mod tests {
+    use num::bigint::Sign;
     use num::BigUint;
     use super::*;
     #[test]
@@ -281,16 +309,16 @@ mod tests {
     fn new_secp256k1() {
         let s = secp256k1::Secp256k1::new();
         let p = Point::new_secp256k1(
-            &Some(FieldElement::new(&s.GX, &s.P)),
-            &Some(FieldElement::new(&s.GY, &s.P))
+            &Some(FieldElement::new(&s.gx, &s.p)),
+            &Some(FieldElement::new(&s.gy, &s.p))
         );
     }
     #[test]
     fn ord() {
         let s = secp256k1::Secp256k1::new();
         let p = Point::new_secp256k1(
-            &Some(FieldElement::new(&s.GX, &s.P)),
-            &Some(FieldElement::new(&s.GY, &s.P))
+            &Some(FieldElement::new(&s.gx, &s.p)),
+            &Some(FieldElement::new(&s.gy, &s.p))
         );
         let p_inf = Point::new_secp256k1(
             &None,
@@ -298,5 +326,36 @@ mod tests {
         );
         println!("{}", p);
         //assert_eq!(p * s.N, p_inf)
+    }
+    #[test]
+    fn verify1() {
+        let s = secp256k1::Secp256k1::new();
+        let p = Point::new_secp256k1(
+            &Some(FieldElement::new(&BigUint::from_str_radix("887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c", 16).unwrap(), &s.p)),
+            &Some(FieldElement::new(&BigUint::from_str_radix("61de6d95231cd89026e286df3b6ae4a894a3378e393e93a0f45b666329a0ae34", 16).unwrap(), &s.p)),
+        );
+        let z= BigUint::from_str_radix("ec208baa0fc1c19f708a9ca96fdeff3ac3f230bb4a7ba4aede4942ad003c0f60", 16).unwrap();
+        let r= BigUint::from_str_radix("ac8d1c87e51d0d441be8b3dd5b05c8795b48875dffe00b7ffcfac23010d3a395", 16).unwrap();
+        let s= BigUint::from_str_radix("68342ceff8935ededd102dd876ffd6ba72d6a427a3edb13d26eb0781cb423c4", 16).unwrap();
+
+        let sig = Signature::new(&r, &s);
+
+        assert_eq!(p.verify(&z, &sig), true)
+
+    }
+    #[test]
+    fn verify2() {
+        let s = secp256k1::Secp256k1::new();
+        let p = Point::new_secp256k1(
+            &Some(FieldElement::new(&BigUint::from_str_radix("887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c", 16).unwrap(), &s.p)),
+            &Some(FieldElement::new(&BigUint::from_str_radix("61de6d95231cd89026e286df3b6ae4a894a3378e393e93a0f45b666329a0ae34", 16).unwrap(), &s.p)),
+        );
+        let z= BigUint::from_str_radix("7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d", 16).unwrap();
+        let r= BigUint::from_str_radix("eff69ef2b1bd93a66ed5219add4fb51e11a840f404876325a1e8ffe0529a2c", 16).unwrap();
+        let s= BigUint::from_str_radix("c7207fee197d27c618aea621406f6bf5ef6fca38681d82b2f06fddbdce6feab6", 16).unwrap();
+
+        let sig = Signature::new(&r, &s);
+
+        assert_eq!(p.verify(&z, &sig), true)
     }
 }
