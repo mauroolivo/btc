@@ -9,29 +9,24 @@ use crate::secp256k1::Secp256k1;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct PrivateKey {
     secret: BigUint,
-    public_key: BigUint,
+    public_key: Point,
 }
 
 impl PrivateKey {
-    pub fn new(secret: &BigUint, public_key: &BigUint) -> Self {
+    pub fn new(secret: &BigUint) -> Self {
+        let s256 = Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+        let public_key = generator * secret.clone();
         PrivateKey {
             secret: secret.clone(),
-            public_key: public_key.clone()
+            public_key: public_key.clone(),
         }
     }
-    /*
-    fn sign(&self, z: &BigUint) -> Signature {
+
+    fn sign(&self, z: &BigUint, k: &BigUint) -> Signature {
         let s256 = Secp256k1::new();
-        let mut rng = rand::rng();
-
-
-        // e = int.from_bytes(hash256(b'my secret'), 'big')
-        //z = int.from_bytes(hash256(b'my message'), 'big')
-
-
-        // for 1 test only
         let n = &s256.n;
-        let k = &BigUint::from(1234567890u32); //rng.random_range(s256.n.to_u32_digits());
+
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
         let r = (generator * k.clone()).x().unwrap().num_value();
         let k_inv = k.modpow(&(n - &BigUint::from(2u8)), &n);
@@ -46,8 +41,6 @@ impl PrivateKey {
         println!("z -> {:x}", z);
         Signature::new(&r, &s)
     }
-
-     */
 }
 
 #[cfg(test)]
@@ -55,7 +48,6 @@ mod tests {
     use num::bigint::Sign;
     use num::BigUint;
     use super::*;
-    /*
     #[test]
     fn sign() {
         let has256 = Sha256::digest(Sha256::digest(&b"my message"));
@@ -64,14 +56,14 @@ mod tests {
         let has256 = Sha256::digest(Sha256::digest(&b"my secret"));
         let e = BigUint::from_bytes_be(has256.as_slice());
 
-        let pr_k = PrivateKey::new(&e, &e);
+        let private_key = PrivateKey::new(&e);
 
+        let k = &BigUint::from(1234567890u32);
 
-        let s = pr_k.sign(&z);
+        let s = private_key.sign(&z, &k);
+
         println!("signature -> {}", s);
     }
-
-     */
 }
 /*def hex(self):
 return '{:x}'.format(self.secret).zfill(64)
