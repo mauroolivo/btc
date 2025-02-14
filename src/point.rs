@@ -78,6 +78,9 @@ impl Point {
     fn is_inf(&self) -> bool {
         self.x.is_none() && self.y.is_none()
     }
+    pub fn x(&self) -> Option<FieldElement> {
+        self.x.clone()
+    }
 }
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
