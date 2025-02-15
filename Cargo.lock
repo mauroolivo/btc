@@ -29,6 +29,7 @@ version = "0.1.0"
 dependencies = [
  "num",
  "rand",
+ "rfc6979",
  "sha2",
 ]
 
@@ -79,6 +80,7 @@ dependencies = [
  "block-buffer",
  "const-oid",
  "crypto-common",
+ "subtle",
 ]
 
 [[package]]
@@ -102,6 +104,15 @@ dependencies = [
  "libc",
  "wasi 0.13.3+wasi-0.2.2",
  "windows-targets",
+]
+
+[[package]]
+name = "hmac"
+version = "0.13.0-pre.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4b1fb14e4df79f9406b434b60acef9f45c26c50062cccf1346c6103b8c47d58"
+dependencies = [
+ "digest",
 ]
 
 [[package]]
@@ -260,6 +271,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rfc6979"
+version = "0.5.0-pre.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "871ee76a3eee98b0f805e5d1caf26929f4565073c580c053a55f886fc15dea49"
+dependencies = [
+ "hmac",
+ "subtle",
+]
+
+[[package]]
 name = "sha2"
 version = "0.11.0-pre.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -269,6 +290,12 @@ dependencies = [
  "cpufeatures",
  "digest",
 ]
+
+[[package]]
+name = "subtle"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "syn"
