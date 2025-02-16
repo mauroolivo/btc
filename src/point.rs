@@ -1,7 +1,7 @@
 use std::ops::{Add, Mul};
-use num::BigUint;
+use num::{BigInt, BigUint, Integer};
 use num::Num;
-use std::fmt;
+use std::{fmt, vec};
 use crate::field_element::FieldElement;
 use crate::secp256k1;
 use crate::signature::Signature;
@@ -21,7 +21,7 @@ impl Point {
             let y = y.clone().unwrap();
             let a = a.clone();
             let b = b.clone();
-            if y.pow(2) != x.pow(3) + a * x + b {
+            if y.pow(BigInt::from(2u32)) != x.pow(BigInt::from(3u32)) + a * x + b {
                 panic!("Point is not on the curve");
             }
         }
@@ -39,7 +39,7 @@ impl Point {
         if !x.is_none() && !y.is_none() {
             let x = x.clone().unwrap();
             let y = y.clone().unwrap();
-            if y.pow(2) != x.pow(3) + a.clone() * x + b.clone() {
+            if y.pow(BigInt::from(2u32)) != x.pow(BigInt::from(3u32)) + a.clone() * x + b.clone() {
                 panic!("Point is not on the curve");
             }
         }
@@ -81,7 +81,69 @@ impl Point {
     pub fn x(&self) -> Option<FieldElement> {
         self.x.clone()
     }
+
+    pub fn sec(&self, compressed: bool) -> Vec<u8> {
+        let mut sec : Vec<u8> = Vec::new();
+        if compressed {
+            if self.y.clone().unwrap().num_value() % BigUint::from(2u32) == BigUint::from(0u32) {
+                sec.push(0x02);
+                sec.extend(self.x.clone().unwrap().num_value().to_bytes_be());
+                sec
+            } else {
+                sec.push(0x03);
+                sec.extend(self.x.clone().unwrap().num_value().to_bytes_be());
+                sec
+            }
+        } else {
+            sec.push(0x04);
+            sec.extend(self.x.clone().unwrap().num_value().to_bytes_be());
+            sec.extend(self.y.clone().unwrap().num_value().to_bytes_be());
+            sec
+        }
+    }
+
+    pub fn parse(data: &[u8]) -> Self {
+        let s256 = secp256k1::Secp256k1::new();
+        if data[0] == 0x04 { /// uncompressed
+            let x = BigUint::from_bytes_be(&data[1..33]);
+            let y = BigUint::from_bytes_be(&data[33..65]);
+
+            return Self::new_secp256k1(
+                &Some(FieldElement::new(&x, &s256.p)),
+                &Some(FieldElement::new(&y, &s256.p)),
+            );
+        }
+
+        let is_even = data[0] == 0x02;
+        let x = BigUint::from_bytes_be(&data[1..]);
+        let x = FieldElement::new(&x, &s256.p);
+
+        // right side of the equation y^2 = x^3 + 7
+        let alpha = x.pow(BigInt::from(3u32)) + FieldElement::new(&s256.b, &s256.p);
+
+        // solve for left side
+        let beta = alpha.sqrt();
+
+        let even_beta = if beta.num_value().is_even() {
+            beta.clone()
+        } else {
+            FieldElement::new(&(&s256.p - beta.clone().num_value()), &s256.p)
+        };
+
+        let odd_beta = if beta.num_value().is_even() {
+            FieldElement::new(&(&s256.p - beta.clone().num_value()), &s256.p)
+        } else {
+            beta.clone()
+        };
+
+        if is_even {
+            Self::new_secp256k1(&Some(x), &Some(even_beta))
+        } else {
+            Self::new_secp256k1(&Some(x), &Some(odd_beta))
+        }
+    }
 }
+
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match (self.x.as_ref(), self.y.as_ref()) {
@@ -92,6 +154,7 @@ impl fmt::Display for Point {
         }
     }
 }
+
 impl Add for Point {
     type Output = Self;
     fn add(self, other: Self) -> Self {
@@ -113,7 +176,7 @@ impl Add for Point {
             )
         } else if self.x != other.x {
             let s = (other.y.clone().unwrap() - self.y.clone().unwrap())/(other.x.clone().unwrap() - self.x.clone().unwrap());
-            let x = s.pow(2).clone() - self.x.clone().unwrap() - other.x.clone().unwrap();
+            let x = s.pow(BigInt::from(2u32)).clone() - self.x.clone().unwrap() - other.x.clone().unwrap();
             let y = s * (self.x.clone().unwrap() - x.clone()) - self.y.clone().unwrap();
             Point::new(
                 &Some(x.clone()),
@@ -130,7 +193,7 @@ impl Add for Point {
                     &self.b.clone(),
                 )
             } else {
-                let s = ((self.x.clone().unwrap().pow(2)*BigUint::from(3u32)) + self.a.clone())/ (self.y.clone().unwrap()*BigUint::from(2u32));
+                let s = ((self.x.clone().unwrap().pow(BigInt::from(2u32))*BigUint::from(3u32)) + self.a.clone())/ (self.y.clone().unwrap()*BigUint::from(2u32));
                 let x = (s.clone() * s.clone()) - self.x.clone().unwrap() * BigUint::from(2u32);
                 let y = s * (self.x.clone().unwrap() - x.clone()) - self.y.clone().unwrap();
                 Point::new(
@@ -170,9 +233,9 @@ impl Mul<BigUint> for Point {
         result
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use num::bigint::Sign;
     use num::BigUint;
     use super::*;
     #[test]
@@ -360,5 +423,135 @@ mod tests {
         let sig = Signature::new(&r, &s);
 
         assert_eq!(p.verify(&z, &sig), true)
+    }
+    #[test]
+    fn sec_1() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+
+        let k = BigUint::from(999u32).pow(3u32);
+        let sec_uncompressed = b"049d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d56fa15cc7f3d38cda98dee2419f415b7513dde1301f8643cd9245aea7f3f911f9";
+        let sec_compressed = b"039d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d5";
+        let point = generator.clone() * k;
+
+        let sec = point.sec(false);
+        assert_eq!(sec, hex::decode(sec_uncompressed).unwrap());
+
+        let sec = point.sec(true);
+        assert_eq!(sec, hex::decode(sec_compressed).unwrap());
+
+        let k = BigUint::from(999u32).pow(3u32);
+        let sec_uncompressed = "049d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d56fa15cc7f3d38cda98dee2419f415b7513dde1301f8643cd9245aea7f3f911f9";
+        let sec_compressed = "039d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d5";
+        let point = generator.clone() * k;
+
+        let sec = point.sec(false);
+        assert_eq!(sec, hex::decode(sec_uncompressed).unwrap());
+
+        let sec = point.sec(true);
+        assert_eq!(sec, hex::decode(sec_compressed).unwrap());
+
+        let k = BigUint::from(123u32);
+        let sec_uncompressed = "04a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5204b5d6f84822c307e4b4a7140737aec23fc63b65b35f86a10026dbd2d864e6b";
+        let sec_compressed = "03a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5";
+        let point = generator.clone() * k;
+
+        let sec = point.sec(false);
+        assert_eq!(sec, hex::decode(sec_uncompressed).unwrap());
+
+        let sec = point.sec(true);
+        assert_eq!(sec, hex::decode(sec_compressed).unwrap());
+
+        let k = BigUint::from(42424242u32);
+        let sec_uncompressed = "04aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e21ec53f40efac47ac1c5211b2123527e0e9b57ede790c4da1e72c91fb7da54a3";
+        let sec_compressed = "03aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e";
+        let point = generator.clone() * k;
+
+        let sec = point.sec(false);
+        assert_eq!(sec, hex::decode(sec_uncompressed).unwrap());
+
+        let sec = point.sec(true);
+        assert_eq!(sec, hex::decode(sec_compressed).unwrap());
+    }
+    #[test]
+    fn sec_2() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+        let point = generator.clone() * BigUint::from(5000u32);
+        assert_eq!(
+            point.sec(false),
+            hex::decode(
+                "04\
+                ffe558e388852f0120e46af2d1b370f85854a8eb0841811ece0e3e03d282d57c315dc72890a4\
+                f10a1481c031b03b351b0dc79901ca18a00cf009dbdb157a1d10"
+            )
+                .unwrap()
+        );
+        let point = generator.clone() * BigUint::from(2018_u32).pow(5);
+        assert_eq!(
+            point.sec(false),
+            hex::decode(
+                "04\
+                027f3da1918455e03c46f659266a1bb5204e959db7364d2f473bdf8f0a13cc9dff87647fd023\
+                c13b4a4994f17691895806e1b40b57f4fd22581a4f46851f3b06"
+            )
+                .unwrap()
+        );
+        let point = generator.clone() * BigUint::from_str_radix("deadbeef12345", 16).unwrap();
+        assert_eq!(
+            point.sec(false),
+            hex::decode(
+                "04\
+                d90cd625ee87dd38656dd95cf79f65f60f7273b67d3096e68bd81e4f5342691f842efa762fd5\
+                9961d0e99803c61edba8b3e3f7dc3a341836f97733aebf987121"
+            )
+                .unwrap()
+        );
+    }
+    #[test]
+    fn sec_3() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+        let point = generator.clone() * BigUint::from(5001u32);
+        assert_eq!(
+            point.sec(true),
+            hex::decode("0357a4f368868a8a6d572991e484e664810ff14c05c0fa023275251151fe0e53d1")
+                .unwrap()
+        );
+        let point = generator.clone() * BigUint::from(2019_u32).pow(5);
+        assert_eq!(
+            point.sec(true),
+            hex::decode("02933ec2d2b111b92737ec12f1c5d20f3233a0ad21cd8b36d0bca7a0cfa5cb8701")
+                .unwrap()
+        );
+        let point = generator.clone() * BigUint::from_str_radix("deadbeef54321", 16).unwrap();
+        assert_eq!(
+            point.sec(true),
+            hex::decode("0296be5b1292f6c856b3c5654e886fc13511462059089cdf9c479623bfcbe77690")
+                .unwrap()
+        );
+    }
+    #[test]
+    fn sec_4() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+        let point = generator.clone() * BigUint::from(5000u32);
+        assert_eq!(Point::parse(&point.sec(false)), point);
+        let point = generator.clone() * BigUint::from(2018_u32).pow(5);
+        assert_eq!(Point::parse(&point.sec(false)), point);
+        let point = generator.clone() * BigUint::from_str_radix("deadbeef12345", 16).unwrap();
+        assert_eq!(Point::parse(&point.sec(false)), point);
+    }
+
+    #[test]
+    fn sec_5() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+        let point = generator.clone() * BigUint::from(5001u32);
+        assert_eq!(Point::parse(&point.sec(true)), point);
+        let point = generator.clone() * BigUint::from(2019_u32).pow(5);
+        assert_eq!(Point::parse(&point.sec(true)), point);
+        let point = generator.clone() * BigUint::from_str_radix("deadbeef54321", 16).unwrap();
+        assert_eq!(Point::parse(&point.sec(true)), point);
     }
 }

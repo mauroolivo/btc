@@ -1,7 +1,8 @@
 use std::ops::{Add, Div, Mul, Sub};
-use num::{BigInt, BigUint, One};
+use num::{BigInt, BigUint, Integer, One, ToPrimitive};
 use num::bigint::ToBigInt;
 use num::traits::Euclid;
+use crate::secp256k1::Secp256k1;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FieldElement {
@@ -19,20 +20,49 @@ impl FieldElement {
         }
     }
 
-    pub fn pow(&self, exponent: i32) -> Self {
+    pub fn pow(&self, exponent: BigInt) -> Self {
         let one = BigInt::from(1u32);
         let p = &self.prime.to_bigint().unwrap();
-        let exp = BigInt::from(exponent);
+
         // modulus for negative exponent
         // In C, C++, D, C#, F# and Java, % is in fact the remainder.
         // In Perl, Python or Ruby, % is the modulus
-        let n = exp.rem_euclid(&(p - one));
+        let n = exponent.rem_euclid(&(p - one));
         let num = self.num.modpow(&n.to_biguint().unwrap(), &self.prime);
         Self::new(&num, &self.prime)
     }
+
     pub fn num_value(&self) -> BigUint {
         self.num.clone()
     }
+
+    /// Valid for secp256k1 becouse p % 4 = 3
+    pub fn sqrt(&self) -> Self {
+        let s256 = Secp256k1::new();
+        let p = s256.p;
+
+        let (q, _) = (&p + BigUint::from(1u32)).div_rem_euclid(&BigUint::from(4u32));
+
+        let num = self.pow(q.to_bigint().unwrap()).num_value();
+
+        Self::new(&num, &p)
+//        let num = self.num.modpow(&exp, &p);
+//        Self::new(&num, &self.field)
+    }
+/*
+    pub fn sqrt(&self) -> Self {
+        let p = self.field.order();
+        let exp = (p + BigUint::from(1u32)) / BigUint::from(4u32);
+        let num = self.num.modpow(&exp, &p);
+        Self::new(&num, &self.field)
+    }
+
+    pub fn sqrt(&self) -> Integer {
+        let (power, _) = (self.field.prime.clone() + Integer::from(1)).div_rem_euc(Integer::from(4));
+        self.pow(&power).value
+    }
+
+  */
 }
 
 
@@ -144,10 +174,10 @@ mod tests {
     fn pow() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(17u32), &BigUint::from(p));
-        assert_eq!(a.pow(3), FieldElement::new(&BigUint::from(15u32), &BigUint::from(p)));
+        assert_eq!(a.pow(BigInt::from(3u32)), FieldElement::new(&BigUint::from(15u32), &BigUint::from(p)));
         let a = FieldElement::new(&BigUint::from(5u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(18u32), &BigUint::from(p));
-        assert_eq!(a.pow(5) * b, FieldElement::new(&BigUint::from(16u32), &BigUint::from(p)));
+        assert_eq!(a.pow(BigInt::from(5u32)) * b, FieldElement::new(&BigUint::from(16u32), &BigUint::from(p)));
     }
     #[test]
     fn div() {
@@ -160,9 +190,9 @@ mod tests {
     fn neg_pow() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(17u32), &BigUint::from(p));
-        assert_eq!(a.pow(-3), FieldElement::new(&BigUint::from(29u32), &BigUint::from(p)));
+        assert_eq!(a.pow(BigInt::from(-3i32)), FieldElement::new(&BigUint::from(29u32), &BigUint::from(p)));
         let a = FieldElement::new(&BigUint::from(4u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(11u32), &BigUint::from(p));
-        assert_eq!(a.pow(-4) * b, FieldElement::new(&BigUint::from(13u32), &BigUint::from(p)));
+        assert_eq!(a.pow(BigInt::from(-4i32)) * b, FieldElement::new(&BigUint::from(13u32), &BigUint::from(p)));
     }
 }
