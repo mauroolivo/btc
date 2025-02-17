@@ -1,5 +1,5 @@
 use std::ops::{Add, Div, Mul, Sub};
-use num::{BigInt, BigUint, Integer, One, ToPrimitive};
+use num::{BigInt, BigUint, One};
 use num::bigint::ToBigInt;
 use num::traits::Euclid;
 use crate::secp256k1::Secp256k1;

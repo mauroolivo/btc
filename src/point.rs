@@ -1,7 +1,7 @@
 use std::ops::{Add, Mul};
 use num::{BigInt, BigUint, Integer};
 use num::Num;
-use std::{fmt, vec};
+use std::{fmt};
 use crate::field_element::FieldElement;
 use crate::secp256k1;
 use crate::signature::Signature;
@@ -104,7 +104,7 @@ impl Point {
 
     pub fn parse(data: &[u8]) -> Self {
         let s256 = secp256k1::Secp256k1::new();
-        if data[0] == 0x04 { /// uncompressed
+        if data[0] == 0x04 { // uncompressed
             let x = BigUint::from_bytes_be(&data[1..33]);
             let y = BigUint::from_bytes_be(&data[33..65]);
 
