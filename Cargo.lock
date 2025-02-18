@@ -31,6 +31,7 @@ dependencies = [
  "num",
  "rand",
  "rfc6979",
+ "ripemd",
  "sha2",
 ]
 
@@ -285,6 +286,15 @@ checksum = "871ee76a3eee98b0f805e5d1caf26929f4565073c580c053a55f886fc15dea49"
 dependencies = [
  "hmac",
  "subtle",
+]
+
+[[package]]
+name = "ripemd"
+version = "0.2.0-pre.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e48cf93482ea998ad1302c42739bc73ab3adc574890c373ec89710e219357579"
+dependencies = [
+ "digest",
 ]
 
 [[package]]

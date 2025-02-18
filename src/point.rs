@@ -386,7 +386,7 @@ mod tests {
             &Some(FieldElement::new(&s.gx, &s.p)),
             &Some(FieldElement::new(&s.gy, &s.p))
         );
-        let p_inf = Point::new_secp256k1(
+        let _p_inf = Point::new_secp256k1(
             &None,
             &None
         );

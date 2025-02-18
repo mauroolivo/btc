@@ -4,5 +4,5 @@ mod point;
 mod secp256k1;
 mod signature;
 mod private_key;
-mod helper;
-mod base58;
+mod helpers;
+

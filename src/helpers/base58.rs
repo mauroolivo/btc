@@ -1,5 +1,9 @@
+use std::io::Read;
 use num::{BigUint, ToPrimitive};
 use num::traits::Euclid;
+use crate::helpers::hash256;
+use crate::helpers::hash256::hash256;
+
 static BASE58_ALPHABET : &'static [u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 pub fn base58_encode(val: Vec<u8>) -> Vec<u8> {
     let bytes = val.as_slice();
@@ -33,6 +37,12 @@ pub fn base58_encode(val: Vec<u8>) -> Vec<u8> {
     final_value
 }
 
+pub fn base58_encode_checksum(bytes: Vec<u8>) -> Vec<u8> {
+    let mut result = bytes;
+    let hash = hash256(&result);
+    result.extend_from_slice(&hash[0..4]);
+    base58_encode(result)
+}
 #[cfg(test)]
 mod tests {
 
@@ -62,5 +72,12 @@ mod tests {
             // let string = String::from_utf8(result.clone()).unwrap();
             assert_eq!(result, expected.as_bytes());
         }
+    }
+    #[test]
+    fn encode_58_checksum() {
+        let value = "7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d";
+        let value: Vec<u8> = hex::decode(value).unwrap();
+        let expected = "wdA2ffYs5cudrdkhFm5Ym94AuLvavacapuDBL2CAcvqYPkcvi";
+        assert_eq!(base58_encode_checksum(value.clone()), expected.as_bytes());
     }
 }

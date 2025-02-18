@@ -1,7 +1,6 @@
 use num::BigUint;
 use sha2::{Digest, Sha256};
 use crate::signature::Signature;
-use rand::Rng;
 use crate::field_element::FieldElement;
 use crate::point::Point;
 use crate::secp256k1::Secp256k1;
@@ -73,6 +72,7 @@ impl PrivateKey {
 mod tests {
     use num::bigint::Sign;
     use num::BigUint;
+    use crate::helpers::hash256::hash256;
     use super::*;
 
     #[test]
@@ -81,13 +81,13 @@ mod tests {
         let n = s256.n;
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
 
-        let has256 = Sha256::digest(Sha256::digest(&b"my secret"));
-        let e = BigUint::from_bytes_be(has256.as_slice());
+        let hash = hash256(b"my secret");
+        let e = BigUint::from_bytes_be(hash.as_slice());
 
         let private_key = PrivateKey::new(&e);
 
-        let has256 = Sha256::digest(Sha256::digest(&b"my message"));
-        let z = BigUint::from_bytes_be(has256.as_slice());
+        let hash = hash256(b"my message");
+        let z = BigUint::from_bytes_be(hash.as_slice());
 
         let sig = private_key.sign(&z);
 
