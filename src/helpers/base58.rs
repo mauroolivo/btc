@@ -1,47 +1,46 @@
-use std::io::Read;
+
 use num::{BigUint, ToPrimitive};
 use num::traits::Euclid;
-use crate::helpers::hash256;
 use crate::helpers::hash256::hash256;
 
-static BASE58_ALPHABET : &'static [u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-pub fn base58_encode(val: Vec<u8>) -> Vec<u8> {
-    let bytes = val.as_slice();
+const BASE58_ALPHABET: &str = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
-    let mut leading_zeros_count = 0;
+pub fn base58_encode(bytes: &[u8]) -> String {
+    let mut result = String::new();
+    let mut leading_zeros = 0;
+
     for byte in bytes {
-        // println!("{:x}", byte);
         if *byte == 0 {
-            leading_zeros_count += 1;
+            leading_zeros += 1;
         } else {
             break;
         }
     }
-    let mut num = BigUint::from_bytes_be(val.as_slice());
+    let mut num = BigUint::from_bytes_be(bytes);
 
-    let mut prefix : Vec<u8> = Vec::new();
-    for _ in 0..leading_zeros_count {
-        prefix.push(0x01);
-    }
-
-    let mut result : Vec<u8> = Vec::new();
     while num > BigUint::from(0u32) {
-        let (q, rem) = num.div_rem_euclid(&BigUint::from(58u32));
-        result.push(BASE58_ALPHABET[rem.to_usize().unwrap()]);
-        num = q;
+        let (div, rem) = num.div_rem_euclid(&BigUint::from(58u8));
+        num = div;
+        result.push(
+            BASE58_ALPHABET
+                .chars()
+                .nth(rem.to_u8().unwrap() as usize)
+                .unwrap(),
+        );
     }
-    result.reverse();
-
-    let mut final_value = prefix;
-    final_value.extend(result);
-    final_value
+    for _ in 0..leading_zeros {
+        let c = BASE58_ALPHABET.chars().nth(0).unwrap();
+        println!("{}", c);
+        result.push(c);
+    }
+    result.chars().rev().collect()
 }
 
-pub fn base58_encode_checksum(bytes: Vec<u8>) -> Vec<u8> {
-    let mut result = bytes;
-    let hash = hash256(&result);
+pub fn base58_encode_checksum(bytes: &[u8]) -> String {
+    let mut result = bytes.to_vec();
+    let hash = hash256(bytes);
     result.extend_from_slice(&hash[0..4]);
-    base58_encode(result)
+    base58_encode(&result)
 }
 #[cfg(test)]
 mod tests {
@@ -67,10 +66,8 @@ mod tests {
 
         for (value, expected) in values {
             let value: Vec<u8> = hex::decode(value).unwrap();
-            let result = base58_encode(value);
-
-            // let string = String::from_utf8(result.clone()).unwrap();
-            assert_eq!(result, expected.as_bytes());
+            let result = base58_encode(value.as_slice());
+            assert_eq!(result, expected);
         }
     }
     #[test]
@@ -78,6 +75,6 @@ mod tests {
         let value = "7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d";
         let value: Vec<u8> = hex::decode(value).unwrap();
         let expected = "wdA2ffYs5cudrdkhFm5Ym94AuLvavacapuDBL2CAcvqYPkcvi";
-        assert_eq!(base58_encode_checksum(value.clone()), expected.as_bytes());
+        assert_eq!(base58_encode_checksum(value.as_slice()), expected);
     }
 }

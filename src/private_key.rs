@@ -23,7 +23,7 @@ impl PrivateKey {
         }
     }
 
-    fn sign(&self, z: &BigUint) -> Signature {
+    pub fn sign(&self, z: &BigUint) -> Signature {
 
         let k = self.deterministic_k(&z);
 
@@ -43,7 +43,7 @@ impl PrivateKey {
         Signature::new(&r, &s)
     }
 
-    fn deterministic_k(&self, z: &BigUint) -> BigUint {
+    pub fn deterministic_k(&self, z: &BigUint) -> BigUint {
         let s256 = Secp256k1::new();
         let n_bytes = s256.n.to_bytes_be();
         let mut n = [0; 32];
@@ -70,7 +70,6 @@ impl PrivateKey {
 
 #[cfg(test)]
 mod tests {
-    use num::bigint::Sign;
     use num::BigUint;
     use crate::helpers::hash256::hash256;
     use super::*;
@@ -78,7 +77,7 @@ mod tests {
     #[test]
     fn sign() {
         let s256 = Secp256k1::new();
-        let n = s256.n;
+
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
 
         let hash = hash256(b"my secret");

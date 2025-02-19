@@ -1,10 +1,11 @@
 use std::ops::{Add, Mul};
 use num::{BigInt, BigUint, Integer};
-use num::Num;
 use std::{fmt};
 use crate::field_element::FieldElement;
 use crate::secp256k1;
 use crate::signature::Signature;
+use crate::helpers::hash160::hash160;
+use crate::helpers::base58::base58_encode_checksum;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Point {
@@ -81,7 +82,6 @@ impl Point {
     pub fn x(&self) -> Option<FieldElement> {
         self.x.clone()
     }
-
     pub fn sec(&self, compressed: bool) -> Vec<u8> {
         let mut sec : Vec<u8> = Vec::new();
         if compressed {
@@ -101,7 +101,26 @@ impl Point {
             sec
         }
     }
+    pub fn address(&self, compressed: bool, testnet: bool) -> String {
+        let sec = self.sec(compressed);
 
+        let h160 = hash160(&sec.as_slice());
+        let prefix = if testnet { b"\x6f" } else { b"\x00" };
+
+        let mut address = prefix.to_vec();
+
+
+        address.extend(h160);
+        println!("--- {:?}", address);
+        let to_retrun = base58_encode_checksum(address.as_slice());
+
+        println!("{:?}", to_retrun);
+        to_retrun
+
+        // left: "\u{1}F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1"
+        // right: "1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1"
+
+    }
     pub fn parse(data: &[u8]) -> Self {
         let s256 = secp256k1::Secp256k1::new();
         if data[0] == 0x04 { // uncompressed
@@ -237,6 +256,7 @@ impl Mul<BigUint> for Point {
 #[cfg(test)]
 mod tests {
     use num::BigUint;
+    use num::Num;
     use super::*;
     #[test]
     fn point1_on() {
@@ -374,7 +394,7 @@ mod tests {
     #[test]
     fn new_secp256k1() {
         let s = secp256k1::Secp256k1::new();
-        let p = Point::new_secp256k1(
+        let _p = Point::new_secp256k1(
             &Some(FieldElement::new(&s.gx, &s.p)),
             &Some(FieldElement::new(&s.gy, &s.p))
         );
@@ -542,7 +562,6 @@ mod tests {
         let point = generator.clone() * BigUint::from_str_radix("deadbeef12345", 16).unwrap();
         assert_eq!(Point::parse(&point.sec(false)), point);
     }
-
     #[test]
     fn sec_5() {
         let s256 = secp256k1::Secp256k1::new();
@@ -553,5 +572,51 @@ mod tests {
         assert_eq!(Point::parse(&point.sec(true)), point);
         let point = generator.clone() * BigUint::from_str_radix("deadbeef54321", 16).unwrap();
         assert_eq!(Point::parse(&point.sec(true)), point);
+    }
+    #[test]
+    fn address_1() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+        let point = generator.clone() * BigUint::from(5002u32);
+
+        assert_eq!(
+            point.address(false, true),
+            "mmTPbXQFxboEtNRkwfh6K51jvdtHLxGeMA"
+        );
+
+        let point = generator.clone() * BigUint::from(2020_u32).pow(5);
+        assert_eq!(
+            point.address(true, true),
+            "mopVkxp8UhXqRYbCYJsbeE1h1fiF64jcoH"
+        );
+        let point = generator.clone() * BigUint::from_str_radix("12345deadbeef", 16).unwrap();
+        assert_eq!(
+            point.address(true, false),
+            "1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1"
+        );
+    }
+    #[test]
+    fn address_2() {
+        let s256 = secp256k1::Secp256k1::new();
+        let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
+
+        let secret1 = 888_u32.pow(3);
+        let secret2 = 321_u32;
+        let secret3 = 4242424242_u32;
+
+        let values = vec![
+
+            (secret1, true, false, "148dY81A9BmdpMhvYEVznrM45kWN32vSCN"),
+            (secret1, true, true, "mieaqB68xDCtbUBYFoUNcmZNwk74xcBfTP"),
+            (secret2, false, false, "1S6g2xBJSED7Qr9CYZib5f4PYVhHZiVfj"),
+            (secret2, false, true, "mfx3y63A7TfTtXKkv7Y6QzsPFY6QCBCXiP"),
+            (secret3, false, false, "1226JSptcStqn4Yq9aAmNXdwdc2ixuH9nb"),
+            (secret3, false, true, "mgY3bVusRUL6ZB2Ss999CSrGVbdRwVpM8s"),
+        ];
+
+        for (secret, compressed, testnet, address) in values {
+            let point = generator.clone() * BigUint::from(secret);
+            assert_eq!(point.address(compressed, testnet), address);
+        }
     }
 }
