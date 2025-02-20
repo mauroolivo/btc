@@ -101,25 +101,16 @@ impl Point {
             sec
         }
     }
-    pub fn address(&self, compressed: bool, testnet: bool) -> String {
+    pub fn address(&self, compressed: bool, testnet: bool) -> Vec<u8> {
         let sec = self.sec(compressed);
 
         let h160 = hash160(&sec.as_slice());
         let prefix = if testnet { b"\x6f" } else { b"\x00" };
 
         let mut address = prefix.to_vec();
-
-
         address.extend(h160);
-        println!("--- {:?}", address);
-        let to_retrun = base58_encode_checksum(address.as_slice());
-
-        println!("{:?}", to_retrun);
+        let to_retrun = base58_encode_checksum(address);
         to_retrun
-
-        // left: "\u{1}F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1"
-        // right: "1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1"
-
     }
     pub fn parse(data: &[u8]) -> Self {
         let s256 = secp256k1::Secp256k1::new();
@@ -581,19 +572,22 @@ mod tests {
 
         assert_eq!(
             point.address(false, true),
-            "mmTPbXQFxboEtNRkwfh6K51jvdtHLxGeMA"
+            "mmTPbXQFxboEtNRkwfh6K51jvdtHLxGeMA".as_bytes().to_vec()
         );
 
         let point = generator.clone() * BigUint::from(2020_u32).pow(5);
         assert_eq!(
             point.address(true, true),
-            "mopVkxp8UhXqRYbCYJsbeE1h1fiF64jcoH"
+            "mopVkxp8UhXqRYbCYJsbeE1h1fiF64jcoH".as_bytes().to_vec()
         );
+
         let point = generator.clone() * BigUint::from_str_radix("12345deadbeef", 16).unwrap();
         assert_eq!(
             point.address(true, false),
-            "1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1"
+            "1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1".as_bytes().to_vec()
         );
+
+
     }
     #[test]
     fn address_2() {
@@ -603,9 +597,7 @@ mod tests {
         let secret1 = 888_u32.pow(3);
         let secret2 = 321_u32;
         let secret3 = 4242424242_u32;
-
         let values = vec![
-
             (secret1, true, false, "148dY81A9BmdpMhvYEVznrM45kWN32vSCN"),
             (secret1, true, true, "mieaqB68xDCtbUBYFoUNcmZNwk74xcBfTP"),
             (secret2, false, false, "1S6g2xBJSED7Qr9CYZib5f4PYVhHZiVfj"),
@@ -613,10 +605,9 @@ mod tests {
             (secret3, false, false, "1226JSptcStqn4Yq9aAmNXdwdc2ixuH9nb"),
             (secret3, false, true, "mgY3bVusRUL6ZB2Ss999CSrGVbdRwVpM8s"),
         ];
-
         for (secret, compressed, testnet, address) in values {
             let point = generator.clone() * BigUint::from(secret);
-            assert_eq!(point.address(compressed, testnet), address);
+            assert_eq!(point.address(compressed, testnet), address.as_bytes().to_vec());
         }
     }
 }
