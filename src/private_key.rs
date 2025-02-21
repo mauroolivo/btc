@@ -42,7 +42,9 @@ impl PrivateKey {
         }
         Signature::new(&r, &s)
     }
-
+    pub fn point(&self) -> Point {
+        self.public_key.clone()
+    }
     pub fn deterministic_k(&self, z: &BigUint) -> BigUint {
         let s256 = Secp256k1::new();
         let n_bytes = s256.n.to_bytes_be();
