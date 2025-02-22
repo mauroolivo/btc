@@ -5,4 +5,7 @@ pub mod secp256k1;
 pub mod signature;
 pub mod private_key;
 pub mod helpers;
-
+pub mod tx;
+pub mod tx_input;
+pub mod tx_output;
+pub mod script;
