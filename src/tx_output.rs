@@ -1,8 +1,8 @@
 
 use crate::script::Script;
 use std::{io::{Cursor, Read}};
-use num::ToPrimitive;
-use crate::helpers::endianness::little_endian_to_int;
+use num::{BigUint, ToPrimitive};
+use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TxOutput {
@@ -18,6 +18,12 @@ impl TxOutput {
             amount: little_endian_to_int(buffer.as_slice()).to_u64().unwrap(),
             script_pubkey: script_pubkey,
         })
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.extend( int_to_little_endian(BigUint::from(self.amount), 8u32));
+        result.extend(self.script_pubkey.serialize());
+        result
     }
     pub fn amount(&self) -> u64 {
         self.amount

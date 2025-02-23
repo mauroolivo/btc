@@ -51,4 +51,44 @@ impl Script {
         }
         Ok(Script { cmds })
     }
+    fn raw_serialize(&self) -> Vec<u8> {
+        let mut result = vec![];
+        for cmd in &self.cmds {
+            if cmd.len() == 1 {
+                let op_code = cmd[0];
+                result.push(op_code);
+            } else {
+                let length = cmd.len();
+                if length < 76 {
+                    result.push(length as u8);
+                } else if length <= 0xff {
+                    result.push(76);
+                    result.push(length as u8);
+                } else if length <= 520 {
+                    result.push(77);
+                    result.extend_from_slice(&length.to_le_bytes()[..2]);
+                } else {
+                    panic!("too long a cmd");
+                }
+                result.extend_from_slice(&cmd);
+            }
+        }
+        result
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = self.raw_serialize();
+        let total = result.len();
+        let mut length_bytes = vec![];
+        if total < 0xfd {
+            length_bytes.push(total as u8);
+        } else if total <= 0xffff {
+            length_bytes.push(0xfd);
+            length_bytes.extend_from_slice(&(total as u16).to_le_bytes());
+        } else {
+            length_bytes.push(0xfe);
+            length_bytes.extend_from_slice(&(total as u32).to_le_bytes());
+        }
+        length_bytes.append(&mut result);
+        length_bytes
+    }
 }

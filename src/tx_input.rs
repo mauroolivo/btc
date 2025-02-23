@@ -1,7 +1,7 @@
 use crate::script::Script;
 use std::{io::{Cursor, Read, Error}};
-use num::ToPrimitive;
-use crate::helpers::endianness::little_endian_to_int;
+use num::{BigUint, ToPrimitive};
+use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TxInput {
@@ -34,6 +34,17 @@ impl TxInput {
             script_sig,
             sequence,
         })
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+
+        let mut prev_tx = self.prev_tx.clone();
+        prev_tx.reverse();
+        result.extend(&prev_tx);
+        result.extend(int_to_little_endian(BigUint::from(self.prev_index), 4u32));
+        result.extend(self.script_sig.serialize());
+        result.extend(int_to_little_endian(BigUint::from(self.sequence), 4u32));
+        result
     }
     pub fn prev_tx(&self) -> &[u8] {
         &self.prev_tx
