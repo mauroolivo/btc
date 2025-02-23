@@ -30,10 +30,8 @@ pub fn read_varint(stream: &mut Cursor<Vec<u8>>) -> Result<u64, std::io::Error> 
         _ => Ok(u64::from(i)),
     }
 }
-
 pub fn encode_varint(i: u64) -> Result<Vec<u8>, std::io::Error> {
     let mut buffer = Vec::new();
-
     if i < 0xfd {
         // If the number is below 253, encode that number as a single byte (e.g.,
         // 100 → 0x64).
@@ -59,9 +57,7 @@ pub fn encode_varint(i: u64) -> Result<Vec<u8>, std::io::Error> {
 #[cfg(test)]
 mod tests {
     use std::vec;
-
     use super::*;
-
     #[test]
     fn varint_1() {
         let test_cases = vec![
@@ -84,7 +80,6 @@ mod tests {
             assert_eq!(result, expected_output);
         }
     }
-
     #[test]
     fn varint_2() {
         let test_cases = vec![
