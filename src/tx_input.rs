@@ -2,6 +2,9 @@ use crate::script::Script;
 use std::{io::{Cursor, Read, Error}};
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
+use crate::tx_fetcher::TxFetcher;
+use crate::helpers::hex::hex;
+use crate::tx::Tx;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TxInput {
@@ -58,4 +61,30 @@ impl TxInput {
     pub fn script_sig(&self) -> Script {
         self.script_sig.clone()
     }
+
+    pub fn fetch_tx(&self, testnet: bool) -> Result<Tx, reqwest::Error> {
+        let tx_id = hex(self.prev_tx().to_vec());
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id.as_str());
+        match result {
+            Ok(tx) => Ok(tx),
+            Err(e) => Err(e)
+        }
+    }
+    pub fn value(&self, testnet: bool) -> u64 {
+        let tx = self.fetch_tx(testnet).unwrap();
+        tx.tx_outs()[self.prev_index as usize].amount()
+    }
+    /*
+    def fetch_tx(self, testnet=False):
+    return TxFetcher.fetch(self.prev_tx.hex(), testnet=testnet)
+
+    def value(self, testnet=False):
+    '''Get the output value by looking up the tx hash.
+    Returns the amount in satoshi.
+    '''
+    tx = self.fetch_tx(testnet=testnet)
+    return tx.tx_outs[self.prev_index].amount
+    */
+
 }
