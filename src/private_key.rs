@@ -22,7 +22,6 @@ impl PrivateKey {
             public_key: public_key.clone(),
         }
     }
-
     pub fn sign(&self, z: &BigUint) -> Signature {
 
         let k = self.deterministic_k(&z);

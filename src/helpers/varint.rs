@@ -57,6 +57,7 @@ pub fn encode_varint(i: u64) -> Result<Vec<u8>, std::io::Error> {
 #[cfg(test)]
 mod tests {
     use std::vec;
+    use crate::helpers::hex::hex;
     use super::*;
     #[test]
     fn varint_1() {
@@ -97,5 +98,9 @@ mod tests {
             let result = encode_varint(input).unwrap();
             assert_eq!(result, expected_output);
         }
+    }
+    #[test]
+    fn varint_3() {
+        print!("{:?}", hex(encode_varint(79u64).unwrap()));
     }
 }

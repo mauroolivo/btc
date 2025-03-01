@@ -61,7 +61,6 @@ impl TxInput {
     pub fn script_sig(&self) -> Script {
         self.script_sig.clone()
     }
-
     pub fn fetch_tx(&self, testnet: bool) -> Result<Tx, reqwest::Error> {
         let tx_id = hex(self.prev_tx().to_vec());
         let tf = TxFetcher::new(testnet);
@@ -75,16 +74,4 @@ impl TxInput {
         let tx = self.fetch_tx(testnet).unwrap();
         tx.tx_outs()[self.prev_index as usize].amount()
     }
-    /*
-    def fetch_tx(self, testnet=False):
-    return TxFetcher.fetch(self.prev_tx.hex(), testnet=testnet)
-
-    def value(self, testnet=False):
-    '''Get the output value by looking up the tx hash.
-    Returns the amount in satoshi.
-    '''
-    tx = self.fetch_tx(testnet=testnet)
-    return tx.tx_outs[self.prev_index].amount
-    */
-
 }
