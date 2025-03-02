@@ -153,4 +153,27 @@ mod tests {
         let required = hex::decode("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap();
         assert_eq!(script.cmds[0], required);
     }
+    #[test]
+    fn test_serialize() {
+        let want = "6a47304402207899531a52d59a6de200179928ca900254a36b8dff8bb75f5f5d71b1cdc26125022008b422690b8461cb52c3cc30330b23d574351872b7c361e9aae3649071c1a7160121035d5c93d9ac96881f19ba1f686f15f009ded7c62efe85a872e6a19b43c15a2937";
+        let script_pubkey = hex::decode(want).unwrap();
+        let mut script_pubkey = Cursor::new(script_pubkey);
+        let script = Script::parse(&mut script_pubkey).unwrap();
+        println!("{}", script);
+        assert_eq!(hex::encode(script.serialize()), want);
+
+        let full = "fd03014d0001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let script_pubkey = hex::decode(full).unwrap();
+        let mut script_pubkey = Cursor::new(script_pubkey);
+        let script = Script::parse(&mut script_pubkey).unwrap();
+        println!("{}", script);
+        assert_eq!(hex::encode(script.serialize()), full);
+
+        let full = "4e4c4caaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let script_pubkey = hex::decode(full).unwrap();
+        let mut script_pubkey = Cursor::new(script_pubkey);
+        let script = Script::parse(&mut script_pubkey).unwrap();
+        println!("{}", script);
+        assert_eq!(hex::encode(script.serialize()), full);
+    }
 }

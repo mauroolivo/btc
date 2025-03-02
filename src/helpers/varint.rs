@@ -101,6 +101,8 @@ mod tests {
     }
     #[test]
     fn varint_3() {
-        print!("{:?}", hex(encode_varint(79u64).unwrap()));
+        print!("{:?}", hex(encode_varint(76u64).unwrap()));
     }
 }
+
+//4d4c4caaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
