@@ -1,5 +1,5 @@
 use std::{io::{Cursor, Read, Error}};
-use crate::helpers::varint::read_varint;
+use crate::helpers::varint::{encode_varint, read_varint};
 use core::fmt;
 use num::ToPrimitive;
 use crate::helpers::endianness::{little_endian_to_int};
@@ -84,20 +84,13 @@ impl Script {
         result
     }
     pub fn serialize(&self) -> Vec<u8> {
-        let mut result = self.raw_serialize();
-        let total = result.len();
-        let mut length_bytes = vec![];
-        if total < 0xfd {
-            length_bytes.push(total as u8);
-        } else if total <= 0xffff {
-            length_bytes.push(0xfd);
-            length_bytes.extend_from_slice(&(total as u16).to_le_bytes());
-        } else {
-            length_bytes.push(0xfe);
-            length_bytes.extend_from_slice(&(total as u32).to_le_bytes());
-        }
-        length_bytes.append(&mut result);
-        length_bytes
+        let raw_result = self.raw_serialize();
+        let len = raw_result.len();
+        let mut result = vec![];
+        let len_encoded = encode_varint(len as u64).unwrap();
+        result.extend(len_encoded);
+        result.extend(raw_result);
+        result
     }
 }
 impl fmt::Display for Script {
