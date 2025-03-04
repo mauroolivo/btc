@@ -1,8 +1,9 @@
+use std::ops::{Add};
 use std::{io::{Cursor, Read, Error}};
 use crate::helpers::varint::{encode_varint, read_varint};
 use core::fmt;
-use num::ToPrimitive;
-use crate::helpers::endianness::{little_endian_to_int};
+use num::{BigUint, ToPrimitive};
+use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::op::op_code_names;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Script {
@@ -64,21 +65,21 @@ impl Script {
         for cmd in &self.cmds {
             if cmd.len() == 1 {
                 let op_code = cmd[0];
-                result.push(op_code);
+                result.extend(int_to_little_endian(BigUint::from(op_code), 1));
             } else {
                 let length = cmd.len();
-                if length < 76 {
-                    result.push(length as u8);
-                } else if length <= 0xff {
-                    result.push(76);
-                    result.push(length as u8);
-                } else if length <= 520 {
-                    result.push(77);
-                    result.extend_from_slice(&length.to_le_bytes()[..2]);
+                if length < 75 {
+                    result.extend(int_to_little_endian(BigUint::from(length.to_u64().unwrap()), 1));
+                } else if length < 256 {
+                    result.extend(int_to_little_endian(BigUint::from(76u64), 1));
+                    result.extend(int_to_little_endian(BigUint::from(length), 1));
+                } else if length < 520 {
+                    result.extend(int_to_little_endian(BigUint::from(77u64), 1));
+                    result.extend(int_to_little_endian(BigUint::from(length), 2));
                 } else {
                     panic!("too long a cmd");
                 }
-                result.extend_from_slice(&cmd);
+                result.extend(cmd)
             }
         }
         result
@@ -91,6 +92,15 @@ impl Script {
         result.extend(len_encoded);
         result.extend(raw_result);
         result
+    }
+}
+impl Add for Script {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        let mut combined = vec![];
+        combined.extend(self.cmds.clone());
+        combined.extend(other.cmds);
+        Script::new(combined)
     }
 }
 impl fmt::Display for Script {
@@ -148,6 +158,7 @@ mod tests {
     }
     #[test]
     fn test_serialize() {
+
         let want = "6a47304402207899531a52d59a6de200179928ca900254a36b8dff8bb75f5f5d71b1cdc26125022008b422690b8461cb52c3cc30330b23d574351872b7c361e9aae3649071c1a7160121035d5c93d9ac96881f19ba1f686f15f009ded7c62efe85a872e6a19b43c15a2937";
         let script_pubkey = hex::decode(want).unwrap();
         let mut script_pubkey = Cursor::new(script_pubkey);
@@ -168,5 +179,10 @@ mod tests {
         let script = Script::parse(&mut script_pubkey).unwrap();
         println!("{}", script);
         assert_eq!(hex::encode(script.serialize()), full);
+
+    }
+    #[test]
+    fn test_add() {
+
     }
 }
