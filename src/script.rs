@@ -4,7 +4,7 @@ use crate::helpers::varint::{encode_varint, read_varint};
 use core::fmt;
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
-use crate::helpers::op::op_code_names;
+use crate::helpers::op_codes::*;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Script {
     cmds: Vec<Vec<u8>>,
@@ -24,32 +24,38 @@ impl Script {
             stream.read(&mut current)?;
             count += 1;
             let current_byte = current[0];
-            print!("{}", current_byte);
-            if current_byte >= 1 && current_byte <= 75 { // read n bytes as an element
-                let n = current_byte;
-                let mut cmd = vec![0u8; n as usize];
-                stream.read(&mut cmd)?;
-                cmds.push(cmd);
-                count += n as u64;
-            } else if current_byte == 76 { // 76 OP_PUSHDATA1
-                let mut buffer = [0; 1];
-                stream.read(&mut buffer)?;
-                let ln = little_endian_to_int(buffer.as_slice()).to_u16().unwrap();
-                let mut cmd = vec![0; ln.to_usize().unwrap()];
-                stream.read(&mut cmd)?;
-                cmds.push(cmd);
-                count += ln as u64 + 1;
-            } else if current_byte == 77 { // 76 OP_PUSHDATA2
-                let mut buffer = [0; 2];
-                stream.read(&mut buffer)?;
-                let ln = little_endian_to_int(buffer.as_slice()).to_u16().unwrap();
-                let mut cmd = vec![0; ln.to_usize().unwrap()];
-                stream.read(&mut cmd)?;
-                cmds.push(cmd);
-                count += ln as u64 + 2;
-            } else {
-                let op_code = current_byte;
-                cmds.push(vec![op_code]);
+
+            match current_byte {
+                _len @ 1..=75 => {
+                    let n = current_byte;
+                    let mut cmd = vec![0u8; n as usize];
+                    stream.read(&mut cmd)?;
+                    cmds.push(cmd);
+                    count += n as u64;
+                }
+                OP_PUSHDATA1 => {
+                    let mut buffer = [0; 1];
+                    stream.read(&mut buffer)?;
+                    let ln = little_endian_to_int(buffer.as_slice()).to_u16().unwrap();
+                    let mut cmd = vec![0; ln.to_usize().unwrap()];
+                    stream.read(&mut cmd)?;
+                    cmds.push(cmd);
+                    count += ln as u64 + 1;
+                }
+                OP_PUSHDATA2 => {
+                    let mut buffer = [0; 2];
+                    stream.read(&mut buffer)?;
+                    let ln = little_endian_to_int(buffer.as_slice()).to_u16().unwrap();
+                    let mut cmd = vec![0; ln.to_usize().unwrap()];
+                    stream.read(&mut cmd)?;
+                    cmds.push(cmd);
+                    count += ln as u64 + 2;
+                }
+                // NOT HANDLED: OP_PUSHDATA4
+                _ => {
+                    let op_code = current_byte;
+                    cmds.push(vec![op_code]);
+                }
             }
         }
         if count != length {
