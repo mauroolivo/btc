@@ -51,7 +51,6 @@ impl Script {
                     cmds.push(cmd);
                     count += ln as u64 + 2;
                 }
-                // NOT HANDLED: OP_PUSHDATA4
                 _ => {
                     let op_code = current_byte;
                     cmds.push(vec![op_code]);
@@ -70,6 +69,9 @@ impl Script {
         let mut result = vec![];
         for cmd in &self.cmds {
             if cmd.len() == 1 {
+                if !is_op(&cmd) {
+                    panic!("OP no handled");
+                }
                 let op_code = cmd[0];
                 result.extend(int_to_little_endian(BigUint::from(op_code), 1));
             } else {
@@ -116,6 +118,9 @@ impl fmt::Display for Script {
 
         for cmd in &self.cmds {
             if cmd.len() == 1 {
+                if !is_op(&cmd) {
+                    panic!("OP no handled");
+                }
                 let op_code = cmd[0];
                 result.push_str(&op_code_names[&op_code]);
             } else {
@@ -127,7 +132,6 @@ impl fmt::Display for Script {
             }
             result.push(' ');
         }
-
         write!(f, "{}", result)
     }
 }
@@ -188,7 +192,49 @@ mod tests {
 
     }
     #[test]
+    fn test_is_op_1() {
+        let mut cmds = vec![];
+        cmds.push(76 as u8);
+        assert!(is_op(&cmds) == true);
+    }
+    #[test]
+    fn test_is_op_2() {
+        let mut cmds = vec![];
+        cmds.push(200 as u8);
+        assert!(is_op(&cmds) == false);
+    }
+    #[test]
     fn test_add() {
+
+    }
+    #[test]
+    fn test_asm() {
+        // length 25, encode_varint -> 19
+        let mut full_script = vec![];
+        let hex = "76a914e94ba250bd0dcd459173f00d84433c1bb96747cd88ac";
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+        full_script.extend(len);
+        full_script.extend(script);
+        let mut stream = Cursor::new(full_script);
+        let script = Script::parse(&mut stream).unwrap();
+        println!("{}", script);
+
+    }
+    #[test]
+    fn test_asm_2() {
+        // length 25, encode_varint -> 19
+        let mut full_script = vec![];
+        let hex = "00143f31a0455c60629a2add47c0be10f53fe873e848";
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+
+        full_script.extend(len);
+        full_script.extend(script);
+
+        let mut stream = Cursor::new(full_script);
+        let script = Script::parse(&mut stream).unwrap();
+        println!("{}", script);
 
     }
 }

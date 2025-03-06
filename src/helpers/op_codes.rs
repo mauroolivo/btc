@@ -1,5 +1,14 @@
 use std::collections::HashMap;
 
+pub fn is_op(cmd: &Vec<u8>) -> bool {
+    if cmd.len() == 1 {
+        let list = op_code_names();
+        if list.contains_key(&cmd[0]) {
+            return true;
+        }
+    }
+    false
+}
 pub fn op_code_names() -> HashMap<u8, &'static str> {
     let mut op_code_names = HashMap::new();
     op_code_names.insert(OP_0, "OP_0");
