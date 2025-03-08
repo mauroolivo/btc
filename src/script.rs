@@ -101,6 +101,116 @@ impl Script {
         result.extend(raw_result);
         result
     }
+    pub fn evaluate(&self, z: &BigUint) -> bool {
+        let mut cmds = self.cmds.clone();
+        let mut stack: Vec<Vec<u8>> = vec![];
+        let mut altstack: Vec<Vec<u8>> = vec![];
+        while cmds.len() > 0 {
+
+            let cmd = cmds.remove(0);
+            if cmd.len() == 1 {
+                if !is_op(&cmd) {
+                    panic!("OP not handled {:?}", cmd);
+                }
+                let op_code = cmd[0];
+                match op_code {
+                    OP_0 => { if !op_0(&mut stack) { return false; } }
+                    OP_1NEGATE => { if !op_1negate(&mut stack) { return false; } }
+
+                    OP_1 => { if !op_1(&mut stack) { return false; } }
+                    OP_2 => { if !op_2(&mut stack) { return false; } }
+                    OP_3 => { if !op_3(&mut stack) { return false; } }
+                    OP_4 => { if !op_4(&mut stack) { return false; } }
+                    OP_5 => { if !op_5(&mut stack) { return false; } }
+                    OP_6 => { if !op_6(&mut stack) { return false; } }
+                    OP_7 => { if !op_7(&mut stack) { return false; } }
+                    OP_8 => { if !op_8(&mut stack) { return false; } }
+                    OP_9 => { if !op_9(&mut stack) { return false; } }
+                    OP_10 => { if !op_10(&mut stack) { return false; } }
+                    OP_11 => { if !op_11(&mut stack) { return false; } }
+                    OP_12 => { if !op_12(&mut stack) { return false; } }
+                    OP_13 => { if !op_13(&mut stack) { return false; } }
+                    OP_14 => { if !op_14(&mut stack) { return false; } }
+                    OP_15 => { if !op_15(&mut stack) { return false; } }
+                    OP_16 => { if !op_16(&mut stack) { return false; } }
+                    OP_NOP => { if !op_nop(&mut stack) { return false; } }
+                    // OP_IF => {}
+                    // OP_NOTIF => {}
+                    // OP_ELSE => {}
+                    // OP_ENDIF => {}
+                    OP_VERIFY => { if !op_verify(&mut stack) { return false; } }
+                    OP_RETURN => { if !op_return(&mut stack) { return false; } }
+                    OP_TOALTSTACK => { if !op_toaltstack(&mut stack, &mut altstack) { return false; } }
+                    OP_FROMALTSTACK => { if !op_fromaltstack(&mut stack, &mut altstack) { return false; } }
+                    OP_2DROP => { if !op_2drop(&mut stack) { return false; } }
+                    OP_2DUP => { if !op_2dup(&mut stack) { return false; } }
+                    OP_3DUP => { if !op_3dup(&mut stack) { return false; } }
+                    OP_2OVER => { if !op_2over(&mut stack) { return false; } }
+                    OP_2ROT => { if !op_2rot(&mut stack) { return false; } }
+                    OP_2SWAP => { if !op_2swap(&mut stack) { return false; } }
+                    OP_IFDUP => { if !op_ifdup(&mut stack) { return false; } }
+                    OP_DEPTH => { if !op_depth(&mut stack) { return false; } }
+                    OP_DROP => { if !op_drop(&mut stack) { return false; } }
+                    OP_DUP => { if !op_dup(&mut stack) { return false; } }
+                    OP_NIP => { if !op_nip(&mut stack) { return false; } }
+                    OP_OVER => { if !op_over(&mut stack) { return false; } }
+                    OP_PICK => { if !op_pick(&mut stack) { return false; } }
+                    OP_ROLL => { if !op_roll(&mut stack) { return false; } }
+                    OP_ROT => { if !op_rot(&mut stack) { return false; } }
+                    OP_SWAP => { if !op_swap(&mut stack) { return false; } }
+                    OP_TUCK => { if !op_tuck(&mut stack) { return false; } }
+                    OP_SIZE => { if !op_size(&mut stack) { return false; } }
+                    OP_EQUAL => { if !op_equal(&mut stack) { return false; } }
+                    OP_EQUALVERIFY => { if !op_equalverify(&mut stack) { return false; } }
+                    OP_1ADD => { if !op_1add(&mut stack) { return false; } }
+                    OP_1SUB => { if !op_1sub(&mut stack) { return false; } }
+                    OP_NEGATE => { if !op_negate(&mut stack) { return false; } }
+                    OP_ABS => { if !op_abs(&mut stack) { return false; } }
+                    OP_NOT => { if !op_not(&mut stack) { return false; } }
+                    OP_0NOTEQUAL => { if !op_0notequal(&mut stack) { return false; } }
+                    OP_ADD => { if !op_add(&mut stack) { return false; } }
+                    OP_SUB => { if !op_sub(&mut stack) { return false; } }
+                    OP_MUL => { if !op_dup(&mut stack) { return false; } }
+                    OP_BOOLAND => { if !op_booland(&mut stack) { return false; } }
+                    OP_BOOLOR => { if !op_boolor(&mut stack) { return false; } }
+                    OP_NUMEQUAL => { if !op_numequal(&mut stack) { return false; } }
+                    OP_NUMEQUALVERIFY => { if !op_numequalverify(&mut stack) { return false; } }
+                    OP_NUMNOTEQUAL => { if !op_numnotequal(&mut stack) { return false; } }
+                    OP_LESSTHAN => { if !op_lessthan(&mut stack) { return false; } }
+                    OP_GREATERTHAN => { if !op_greaterthan(&mut stack) { return false; } }
+                    OP_LESSTHANOREQUAL => { if !op_lessthanorequal(&mut stack) { return false; } }
+                    OP_GREATERTHANOREQUAL => { if !op_greaterthanorequal(&mut stack) { return false; } }
+                    OP_MIN => { if !op_min(&mut stack) { return false; } }
+                    OP_MAX => { if !op_max(&mut stack) { return false; } }
+                    OP_WITHIN => { if !op_within(&mut stack) { return false; } }
+                    OP_RIPEMD160 => { if !op_ripemd160(&mut stack) { return false; } }
+                    OP_SHA1 => { if !op_sha1(&mut stack) { return false; } }
+                    OP_SHA256 => { if !op_sha256(&mut stack) { return false; } }
+                    OP_HASH160 => { if !op_hash160(&mut stack) { return false; } }
+                    OP_HASH256 => { if !op_hash256(&mut stack) { return false; } }
+                    OP_CODESEPARATOR => { if !op_codeseparator(&mut stack) { return false; } }
+                    OP_CHECKSIG => { if !op_checksig(&mut stack, z) { return false; } }
+                    OP_CHECKSIGVERIFY => { if !op_checksigverify(&mut stack, z) { return false; } }
+                    OP_CHECKMULTISIG => { if !op_checkmultisig(&mut stack, z) { return false; } }
+                    OP_CHECKMULTISIGVERIFY => { if !op_checkmultisigverify(&mut stack, z) { return false; } }
+
+                    _ => {
+                        panic!("UNKNOWN OP CODE {}", op_code);
+                    }
+                }
+            } else {
+                stack.push(cmd);
+            }
+        }
+        if stack.len() == 0 {
+            return false;
+        }
+        //if stack.pop().unwrap() == b"" {
+        if stack.remove(0) == b"" {
+            return false;
+        }
+        true
+    }
 }
 impl Add for Script {
     type Output = Self;
@@ -119,7 +229,7 @@ impl fmt::Display for Script {
         for cmd in &self.cmds {
             if cmd.len() == 1 {
                 if !is_op(&cmd) {
-                    panic!("OP no handled");
+                    panic!("OP not handled {:?}", cmd);
                 }
                 let op_code = cmd[0];
                 result.push_str(&op_code_names[&op_code]);
@@ -236,5 +346,74 @@ mod tests {
         let script = Script::parse(&mut stream).unwrap();
         println!("{}", script);
 
+    }
+    #[test]
+    fn test_asm_3() {
+        // length 25, encode_varint -> 19
+        let mut full_script = vec![];
+        // OP_DUP OP_DUP OP_MUL OP_ADD OP_6 OP_EQUAL
+        let hex = "767695935687";
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+
+        full_script.extend(len);
+        full_script.extend(script);
+
+        let mut stream = Cursor::new(full_script);
+        let script = Script::parse(&mut stream).unwrap();
+        println!("{}", script);
+
+    }
+    #[test]
+    fn test_eval_1() {
+        let mut full_script = vec![];
+        let hex = "767695935687"; // OP_DUP OP_DUP OP_MUL OP_ADD OP_6 OP_EQUAL
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+        full_script.extend(len);
+        full_script.extend(script);
+        let mut stream = Cursor::new(full_script);
+        let script_pubkey = Script::parse(&mut stream).unwrap();
+
+        let mut full_script = vec![];
+        let hex = "52"; // --> 82, OP_2
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+        full_script.extend(len);
+        full_script.extend(script);
+        let mut stream = Cursor::new(full_script);
+        let script_sig = Script::parse(&mut stream).unwrap();
+
+        let combined_script =  script_sig + script_pubkey;
+        println!("COMBINED: {}", combined_script);
+        let eval = combined_script.evaluate(&BigUint::from(0u32));
+        println!("EVAL: {:?}", eval);
+        assert_eq!(eval, true);
+    }
+    #[test]
+    fn test_eval_2() {
+        let mut full_script = vec![];
+        let hex = "55935987"; // OP_DUP OP_DUP OP_MUL OP_ADD OP_6 OP_EQUAL
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+        full_script.extend(len);
+        full_script.extend(script);
+        let mut stream = Cursor::new(full_script);
+        let script_pubkey = Script::parse(&mut stream).unwrap();
+
+        let mut full_script = vec![];
+        let hex = "54";
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+        full_script.extend(len);
+        full_script.extend(script);
+        let mut stream = Cursor::new(full_script);
+        let script_sig = Script::parse(&mut stream).unwrap();
+
+        let combined_script =  script_sig + script_pubkey;
+        println!("COMBINED: {}", combined_script);
+        let eval = combined_script.evaluate(&BigUint::from(0u32));
+        println!("EVAL: {:?}", eval);
+        assert_eq!(eval, true);
     }
 }

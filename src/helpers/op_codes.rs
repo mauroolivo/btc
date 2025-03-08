@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use num::BigUint;
 use sha2::{Digest, Sha256};
 use sha1::Sha1;
 use ripemd::{Ripemd160};
@@ -153,7 +154,7 @@ pub const OP_NOT: u8 = 145;
 pub const OP_0NOTEQUAL: u8 = 146;
 pub const OP_ADD: u8 = 147;
 pub const OP_SUB: u8 = 148;
-pub(crate) const OP_MUL: u8 = 149;
+pub const OP_MUL: u8 = 149;
 pub const OP_BOOLAND: u8 = 154;
 pub const OP_BOOLOR: u8 = 155;
 pub const OP_NUMEQUAL: u8 = 156;
@@ -176,16 +177,9 @@ pub const OP_CHECKSIG: u8 = 172;
 pub const OP_CHECKSIGVERIFY: u8 = 173;
 pub const OP_CHECKMULTISIG: u8 = 174;
 pub const OP_CHECKMULTISIGVERIFY: u8 = 175;
-pub(crate) const OP_NOP1: u8 = 176;
+pub const OP_NOOP1: u8 = 176;
 pub const OP_CHECKLOCKTIMEVERIFY: u8 = 177;
 pub const OP_CHECKSEQUENCEVERIFY: u8 = 178;
-pub(crate) const OP_NOP4: u8 = 179;
-pub(crate) const OP_NOP5: u8 = 180;
-pub(crate) const OP_NOP6: u8 = 181;
-pub(crate) const OP_NOP7: u8 = 182;
-pub(crate) const OP_NOP8: u8 = 183;
-pub(crate) const OP_NOP9: u8 = 184;
-pub(crate) const OP_NOP10: u8 = 185;
 
 pub fn encode_num(num: i32) -> Vec<u8> {
     if num == 0 {
@@ -238,97 +232,78 @@ pub fn op_0(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(0));
     true
 }
-
-fn op_1negate(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_1negate(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(-1));
     true
 }
-
-fn op_1(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_1(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(1));
     true
 }
-
-fn op_2(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_2(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(2));
     true
 }
-
-fn op_3(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_3(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(3));
     true
 }
-
-fn op_4(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_4(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(4));
     true
 }
-
-fn op_5(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_5(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(5));
     true
 }
-
 pub fn op_6(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(6));
     true
 }
-
-fn op_7(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_7(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(7));
     true
 }
-
-fn op_8(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_8(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(8));
     true
 }
-
-fn op_9(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_9(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(9));
     true
 }
-
-fn op_10(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_10(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(10));
     true
 }
-
-fn op_11(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_11(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(11));
     true
 }
-
-fn op_12(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_12(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(12));
     true
 }
-
-fn op_13(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_13(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(13));
     true
 }
-
-fn op_14(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_14(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(14));
     true
 }
-
-fn op_15(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_15(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(15));
     true
 }
-
-fn op_16(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_16(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(16));
     true
 }
-
-fn op_nop(_stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_nop(_stack: &mut Vec<Vec<u8>>) -> bool {
     true
 }
-
-fn op_if(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
+pub fn op_if(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
     if stack.len() < 1 {
         return false;
     }
@@ -377,8 +352,7 @@ fn op_if(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
 
     true
 }
-
-fn op_notif(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
+pub fn op_notif(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
     if stack.len() < 1 {
         return false;
     }
@@ -427,8 +401,13 @@ fn op_notif(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
 
     true
 }
-
-fn op_verify(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_else(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
+    panic!("op_else not implemented")
+}
+pub fn op_endif(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
+    panic!("op_endif not implemented")
+}
+pub fn op_verify(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 1 {
         return false;
     }
@@ -440,12 +419,10 @@ fn op_verify(stack: &mut Vec<Vec<u8>>) -> bool {
 
     true
 }
-
-fn op_return(_stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_return(_stack: &mut Vec<Vec<u8>>) -> bool {
     return false;
 }
-
-fn op_toaltstack(stack: &mut Vec<Vec<u8>>, altstack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_toaltstack(stack: &mut Vec<Vec<u8>>, altstack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -453,8 +430,7 @@ fn op_toaltstack(stack: &mut Vec<Vec<u8>>, altstack: &mut Vec<Vec<u8>>) -> bool 
     altstack.push(item);
     true
 }
-
-fn op_fromaltstack(stack: &mut Vec<Vec<u8>>, altstack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_fromaltstack(stack: &mut Vec<Vec<u8>>, altstack: &mut Vec<Vec<u8>>) -> bool {
     if altstack.is_empty() {
         return false;
     }
@@ -462,8 +438,7 @@ fn op_fromaltstack(stack: &mut Vec<Vec<u8>>, altstack: &mut Vec<Vec<u8>>) -> boo
     stack.push(item);
     true
 }
-
-fn op_2drop(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_2drop(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -471,8 +446,7 @@ fn op_2drop(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.pop();
     true
 }
-
-fn op_2dup(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_2dup(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -482,8 +456,7 @@ fn op_2dup(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item2);
     true
 }
-
-fn op_3dup(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_3dup(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 3 {
         return false;
     }
@@ -495,8 +468,7 @@ fn op_3dup(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item3);
     true
 }
-
-fn op_2over(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_2over(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 4 {
         return false;
     }
@@ -506,8 +478,7 @@ fn op_2over(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item2);
     true
 }
-
-fn op_2rot(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_2rot(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 6 {
         return false;
     }
@@ -525,8 +496,7 @@ fn op_2rot(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item6);
     true
 }
-
-fn op_2swap(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_2swap(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 4 {
         return false;
     }
@@ -540,8 +510,7 @@ fn op_2swap(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item2);
     true
 }
-
-fn op_ifdup(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_ifdup(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 1 {
         return false;
     }
@@ -551,21 +520,18 @@ fn op_ifdup(stack: &mut Vec<Vec<u8>>) -> bool {
     }
     true
 }
-
-fn op_depth(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_depth(stack: &mut Vec<Vec<u8>>) -> bool {
     let depth = stack.len() as i32;
     stack.push(encode_num(depth));
     true
 }
-
-fn op_drop(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_drop(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
     stack.pop();
     true
 }
-
 pub fn op_dup(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         println!("op_dup called with empty stack");
@@ -575,15 +541,13 @@ pub fn op_dup(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item);
     true
 }
-
-fn op_nip(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_nip(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
     stack.remove(stack.len() - 2);
     true
 }
-
 pub fn op_over(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
@@ -592,18 +556,7 @@ pub fn op_over(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item);
     true
 }
-
-pub fn op_mul(stack: &mut Vec<Vec<u8>>) -> bool {
-    if stack.len() < 2 {
-        return false;
-    }
-    let item1 = decode_num(stack.pop().unwrap().as_slice());
-    let item2 = decode_num(stack.pop().unwrap().as_slice());
-    stack.push(encode_num(item1 * item2));
-    true
-}
-
-fn op_pick(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_pick(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 1 {
         return false;
     }
@@ -616,8 +569,7 @@ fn op_pick(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item);
     true
 }
-
-fn op_roll(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_roll(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 1 {
         return false;
     }
@@ -630,8 +582,7 @@ fn op_roll(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item);
     true
 }
-
-fn op_rot(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_rot(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 3 {
         return false;
     }
@@ -643,8 +594,7 @@ fn op_rot(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item3);
     true
 }
-
-fn op_swap(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_swap(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -654,8 +604,7 @@ fn op_swap(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item2);
     true
 }
-
-fn op_tuck(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_tuck(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -666,8 +615,7 @@ fn op_tuck(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(item1);
     true
 }
-
-fn op_size(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_size(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -676,7 +624,6 @@ fn op_size(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(size));
     true
 }
-
 pub fn op_equal(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
@@ -687,8 +634,7 @@ pub fn op_equal(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_equalverify(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_equalverify(stack: &mut Vec<Vec<u8>>) -> bool {
     if !op_equal(stack) {
         return false;
     }
@@ -701,8 +647,7 @@ fn op_equalverify(stack: &mut Vec<Vec<u8>>) -> bool {
     }
     true
 }
-
-fn op_1add(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_1add(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -711,8 +656,7 @@ fn op_1add(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(num + 1));
     true
 }
-
-fn op_1sub(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_1sub(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -721,8 +665,7 @@ fn op_1sub(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(num - 1));
     true
 }
-
-fn op_negate(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_negate(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -731,8 +674,7 @@ fn op_negate(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(-num));
     true
 }
-
-fn op_abs(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_abs(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -741,8 +683,7 @@ fn op_abs(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(num.abs()));
     true
 }
-
-fn op_not(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_not(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -752,8 +693,7 @@ fn op_not(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_0notequal(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_0notequal(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -763,7 +703,6 @@ fn op_0notequal(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
 pub fn op_add(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
@@ -775,8 +714,7 @@ pub fn op_add(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(num1 + num2));
     true
 }
-
-fn op_sub(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_sub(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -787,8 +725,16 @@ fn op_sub(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(num1 - num2));
     true
 }
-
-fn op_booland(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_mul(stack: &mut Vec<Vec<u8>>) -> bool {
+    if stack.len() < 2 {
+        return false;
+    }
+    let item1 = decode_num(stack.pop().unwrap().as_slice());
+    let item2 = decode_num(stack.pop().unwrap().as_slice());
+    stack.push(encode_num(item1 * item2));
+    true
+}
+pub fn op_booland(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -800,8 +746,7 @@ fn op_booland(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_boolor(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_boolor(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -813,8 +758,7 @@ fn op_boolor(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_numequal(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_numequal(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -826,8 +770,7 @@ fn op_numequal(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_numequalverify(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_numequalverify(stack: &mut Vec<Vec<u8>>) -> bool {
     if !op_numequal(stack) {
         return false;
     }
@@ -840,8 +783,7 @@ fn op_numequalverify(stack: &mut Vec<Vec<u8>>) -> bool {
     }
     true
 }
-
-fn op_numnotequal(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_numnotequal(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -853,8 +795,7 @@ fn op_numnotequal(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_lessthan(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_lessthan(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -866,8 +807,7 @@ fn op_lessthan(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_greaterthan(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_greaterthan(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -879,8 +819,7 @@ fn op_greaterthan(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_lessthanorequal(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_lessthanorequal(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -892,8 +831,7 @@ fn op_lessthanorequal(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_greaterthanorequal(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_greaterthanorequal(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -905,8 +843,7 @@ fn op_greaterthanorequal(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_min(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_min(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -918,8 +855,7 @@ fn op_min(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_max(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_max(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 2 {
         return false;
     }
@@ -931,8 +867,7 @@ fn op_max(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_within(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_within(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.len() < 3 {
         return false;
     }
@@ -946,8 +881,7 @@ fn op_within(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(encode_num(result));
     true
 }
-
-fn op_ripemd160(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_ripemd160(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -956,8 +890,7 @@ fn op_ripemd160(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(hash.to_vec());
     true
 }
-
-fn op_sha1(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_sha1(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -968,8 +901,7 @@ fn op_sha1(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(result.to_vec());
     true
 }
-
-fn op_sha256(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_sha256(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -980,8 +912,7 @@ fn op_sha256(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(result.to_vec());
     true
 }
-
-fn op_hash160(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_hash160(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -995,8 +926,7 @@ fn op_hash160(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(result.to_vec());
     true
 }
-
-fn op_hash256(stack: &mut Vec<Vec<u8>>) -> bool {
+pub fn op_hash256(stack: &mut Vec<Vec<u8>>) -> bool {
     if stack.is_empty() {
         return false;
     }
@@ -1010,24 +940,25 @@ fn op_hash256(stack: &mut Vec<Vec<u8>>) -> bool {
     stack.push(result.to_vec());
     true
 }
-
-fn op_checksig(_stack: &mut Vec<Vec<u8>>, _z: i64) -> bool {
-    unimplemented!()
+pub fn op_codeseparator(stack: &mut Vec<Vec<u8>>) -> bool {
+    panic!("op_codeseparator not implemented")
 }
-
-fn op_checksigverify(stack: &mut Vec<Vec<u8>>, z: i64) -> bool {
+pub fn op_checksig(_stack: &mut Vec<Vec<u8>>, _z: &BigUint) -> bool {
+    panic!("op_checksig not implemented")
+}
+pub fn op_checksigverify(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
     op_checksig(stack, z) && op_verify(stack)
 }
-
-fn op_checkmultisig(_stack: &mut Vec<Vec<u8>>, _z: i64) -> bool {
-    unimplemented!()
+pub fn op_checkmultisig(_stack: &mut Vec<Vec<u8>>, _z: &BigUint) -> bool {
+    panic!("op_checkmultisig not implemented")
 }
-
-fn op_checkmultisigverify(stack: &mut Vec<Vec<u8>>, z: i64) -> bool {
+pub fn op_checkmultisigverify(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
     op_checkmultisig(stack, z) && op_verify(stack)
 }
-
-fn op_checklocktimeverify(stack: &mut Vec<Vec<u8>>, locktime: u32, sequence: u32) -> bool {
+pub fn op_noop1(_stack: &mut Vec<Vec<u8>>) -> bool {
+    panic!("op_noop1 not implemented")
+}
+pub fn op_checklocktimeverify(stack: &mut Vec<Vec<u8>>, locktime: u32, sequence: u32) -> bool {
     if sequence == 0xffffffff {
         return false;
     }
@@ -1046,8 +977,7 @@ fn op_checklocktimeverify(stack: &mut Vec<Vec<u8>>, locktime: u32, sequence: u32
     }
     true
 }
-
-fn op_checksequenceverify(stack: &mut Vec<Vec<u8>>, version: u32, sequence: u32) -> bool {
+pub fn op_checksequenceverify(stack: &mut Vec<Vec<u8>>, version: u32, sequence: u32) -> bool {
     if sequence & (1 << 31) == (1 << 31) {
         return false;
     }
