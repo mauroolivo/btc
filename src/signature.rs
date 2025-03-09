@@ -1,5 +1,6 @@
 use core::fmt;
-use num::BigUint;
+use std::io::{Cursor, Error};
+use num::{BigUint};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Signature {
@@ -20,6 +21,79 @@ impl Signature {
     pub fn s(&self) -> &BigUint {
         &self.s
     }
+
+    pub fn parse(der: &Vec<u8>) -> Result<Signature, Error> {
+
+        let mut buffer = [0u8; 1];
+        let mut stream = &mut Cursor::new(der);
+        //stream.read(&mut buffer)?;
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let compound = buffer[0];
+        if compound != 0x30 {
+            panic!("Invalid signature compound");
+        }
+        let mut buffer = [0u8; 1];
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let length = buffer[0];
+        if length as usize + 2usize != der.len() {
+            panic!("Invalid signature length");
+        }
+        let mut buffer = [0u8; 1];
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let marker = buffer[0];
+        if marker != 0x02 {
+            panic!("Invalid signature marker");
+        }
+        let mut buffer = [0u8; 1];
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let rlength = buffer[0];
+
+        let mut buffer = vec![0u8; rlength as usize];
+
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let r = BigUint::from_bytes_be(buffer.as_slice());
+
+        let mut buffer = [0u8; 1];
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let marker = buffer[0];
+        if marker != 0x02 {
+            panic!("Invalid signature marker 2");
+        }
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let slength = buffer[0];
+        let mut buffer = vec![0u8; slength as usize];
+
+        std::io::Read::read(&mut stream, &mut buffer)?;
+        let s = BigUint::from_bytes_be(buffer.as_slice());
+
+        if der.len() != 6usize + rlength as usize  + slength as usize {
+            panic!("Signature too long");
+        }
+        Ok(Signature::new(&r, &s))
+    }
+/*
+    def parse(cls, signature_bin):
+    s = BytesIO(signature_bin)
+    compound = s.read(1)[0]
+    if compound != 0x30:
+    raise SyntaxError("Bad Signature")
+    length = s.read(1)[0]
+    if length + 2 != len(signature_bin):
+    raise SyntaxError("Bad Signature Length")
+    marker = s.read(1)[0]
+    if marker != 0x02:
+    raise SyntaxError("Bad Signature")
+    rlength = s.read(1)[0]
+    r = int.from_bytes(s.read(rlength), 'big')
+    marker = s.read(1)[0]
+    if marker != 0x02:
+    raise SyntaxError("Bad Signature")
+    slength = s.read(1)[0]
+    s = int.from_bytes(s.read(slength), 'big')
+    if len(signature_bin) != 6 + rlength + slength:
+    raise SyntaxError("Signature too long")
+    return cls(r, s)
+    */
 }
 impl Signature {
     pub fn der(&self) -> Vec<u8> {

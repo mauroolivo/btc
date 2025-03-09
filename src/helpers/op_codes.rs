@@ -3,6 +3,8 @@ use num::BigUint;
 use sha2::{Digest, Sha256};
 use sha1::Sha1;
 use ripemd::{Ripemd160};
+use crate::point::Point;
+use crate::signature::Signature;
 
 pub fn is_op(cmd: &Vec<u8>) -> bool {
     if cmd.len() == 1 {
@@ -402,9 +404,13 @@ pub fn op_notif(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
     true
 }
 pub fn op_else(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
+    println!("{}", stack.len());
+    println!("{:?}", items);
     panic!("op_else not implemented")
 }
 pub fn op_endif(stack: &mut Vec<Vec<u8>>, items: &mut Vec<u8>) -> bool {
+    println!("{}", stack.len());
+    println!("{:?}", items);
     panic!("op_endif not implemented")
 }
 pub fn op_verify(stack: &mut Vec<Vec<u8>>) -> bool {
@@ -941,10 +947,32 @@ pub fn op_hash256(stack: &mut Vec<Vec<u8>>) -> bool {
     true
 }
 pub fn op_codeseparator(stack: &mut Vec<Vec<u8>>) -> bool {
+    println!("{}", stack.len());
     panic!("op_codeseparator not implemented")
 }
-pub fn op_checksig(_stack: &mut Vec<Vec<u8>>, _z: &BigUint) -> bool {
-    panic!("op_checksig not implemented")
+pub fn op_checksig(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
+    if stack.len() < 2 {
+        return false;
+    }
+    // the top element of the stack is the SEC pubkey
+    // the top element is the last added
+    // sec is the last added, pop takes the last!
+    let sec = stack.pop().unwrap();
+    // the next element of the stack is the DER signature
+    let mut der = stack.pop().unwrap();
+
+    // take off the last byte of the signature as that's the hash_type
+    der.pop();
+
+    let point1 = Point::parse(&sec);
+    let point2 = Signature::parse(&der);
+
+    if point1.verify(z, &point2.unwrap()) == true {
+        stack.push(encode_num(1));
+    } else {
+        stack.push(encode_num(0));
+    }
+    true
 }
 pub fn op_checksigverify(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
     op_checksig(stack, z) && op_verify(stack)

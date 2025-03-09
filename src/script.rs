@@ -5,6 +5,7 @@ use core::fmt;
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::op_codes::*;
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Script {
     cmds: Vec<Vec<u8>>,
@@ -248,6 +249,7 @@ impl fmt::Display for Script {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num::Num;
     #[test]
     fn test_parse() {
 
@@ -312,10 +314,6 @@ mod tests {
         let mut cmds = vec![];
         cmds.push(200 as u8);
         assert!(is_op(&cmds) == false);
-    }
-    #[test]
-    fn test_add() {
-
     }
     #[test]
     fn test_asm() {
@@ -393,7 +391,7 @@ mod tests {
     #[test]
     fn test_eval_2() {
         let mut full_script = vec![];
-        let hex = "55935987"; // OP_DUP OP_DUP OP_MUL OP_ADD OP_6 OP_EQUAL
+        let hex = "55935987"; // OP_5 OP_ADD OP_9 OP_EQUAL
         let script = hex::decode(hex).unwrap();
         let len = encode_varint(script.len() as u64).unwrap();
         full_script.extend(len);
@@ -402,7 +400,7 @@ mod tests {
         let script_pubkey = Script::parse(&mut stream).unwrap();
 
         let mut full_script = vec![];
-        let hex = "54";
+        let hex = "54"; // OP_4
         let script = hex::decode(hex).unwrap();
         let len = encode_varint(script.len() as u64).unwrap();
         full_script.extend(len);
@@ -413,6 +411,31 @@ mod tests {
         let combined_script =  script_sig + script_pubkey;
         println!("COMBINED: {}", combined_script);
         let eval = combined_script.evaluate(&BigUint::from(0u32));
+        println!("EVAL: {:?}", eval);
+        assert_eq!(eval, true);
+    }
+    #[test]
+    fn test_p2pk() {
+        let z = BigUint::from_str_radix("7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d", 16).unwrap();
+        let sec = "04887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c61de6d95231cd89026e286df3b6ae4a894a3378e393e93a0f45b666329a0ae34";
+        let sig = "3045022000eff69ef2b1bd93a66ed5219add4fb51e11a840f404876325a1e8ffe0529a2c022100c7207fee197d27c618aea621406f6bf5ef6fca38681d82b2f06fddbdce6feab601";
+
+        let sec = hex::decode(sec).unwrap();
+        let mut sec_v:Vec<Vec<u8>> = vec![];
+        let check = hex::decode("ac").unwrap();
+        sec_v.push(sec);
+        sec_v.push(check);
+        let script_pubkey = Script::new(sec_v);
+
+        let sig = hex::decode(sig).unwrap();
+        let mut sig_v:Vec<Vec<u8>> = vec![];
+        sig_v.push(sig);
+        let script_sig = Script::new(sig_v);
+
+
+        let combined_script =  script_sig + script_pubkey;
+        println!("COMBINED: {}", combined_script);
+        let eval = combined_script.evaluate(&z);
         println!("EVAL: {:?}", eval);
         assert_eq!(eval, true);
     }
