@@ -432,11 +432,29 @@ mod tests {
         sig_v.push(sig);
         let script_sig = Script::new(sig_v);
 
-
         let combined_script =  script_sig + script_pubkey;
         println!("COMBINED: {}", combined_script);
         let eval = combined_script.evaluate(&z);
         println!("EVAL: {:?}", eval);
         assert_eq!(eval, true);
+    }
+    #[test]
+    fn test_asm_4() {
+        //p2pk_script_pub_key = "76a91455ae51684c43435da751ac8d2173b2652eb6410588ac"
+        //p2phk_script_sig = "483045022100c233c3a8a510e03ad18b0a24694ef00c78101bfd5ac075b8c1037952ce26e91e02205aa5f8f88f29bb4ad5808ebc12abfd26bd791256f367b04c6d955f01f28a7724012103f0609c81a45f8cab67fc2d050c21b1acd3d37c7acfd54041be6601ab4cef4f31"
+        // length 25, encode_varint -> 19
+        let mut full_script = vec![];
+        // OP_DUP OP_HASH160 55ae51684c43435da751ac8d2173b2652eb64105 OP_EQUALVERIFY OP_CHECKSIG
+        let hex = "76a91455ae51684c43435da751ac8d2173b2652eb6410588ac";
+        let script = hex::decode(hex).unwrap();
+        let len = encode_varint(script.len() as u64).unwrap();
+
+        full_script.extend(len);
+        full_script.extend(script);
+
+        let mut stream = Cursor::new(full_script);
+        let script = Script::parse(&mut stream).unwrap();
+        println!("{}", script);
+
     }
 }

@@ -5,3 +5,4 @@ pub mod hash160;
 pub mod endianness;
 pub mod varint;
 pub mod op_codes;
+pub mod sig_hash;

@@ -10,11 +10,18 @@ use crate::tx::Tx;
 pub struct TxInput {
     prev_tx: Vec<u8>,
     prev_index: u32,
-    script_sig: Script,
+    script_sig: Option<Script>,
     sequence: u32,
 }
 impl TxInput {
-    //pub fn new(prev_tx: Vec<u8>, prev_index: Vec<u8>, script_sig: Script, sequence: Vec<u8>) -> Self {}
+    pub fn new(prev_tx: Vec<u8>, prev_index: u32, script_sig: Option<Script>, sequence: u32) -> Self {
+        TxInput {
+            prev_tx: prev_tx,
+            prev_index: prev_index,
+            script_sig: script_sig,
+            sequence: sequence
+        }
+    }
     pub fn parse(stream: &mut Cursor<Vec<u8>>) -> Result<Self, Error> {
         let mut buffer = vec![0; 32];
         stream.read(&mut buffer)?;
@@ -34,7 +41,7 @@ impl TxInput {
         Ok(TxInput {
             prev_tx,
             prev_index,
-            script_sig,
+            script_sig: Some(script_sig),
             sequence,
         })
     }
@@ -45,12 +52,16 @@ impl TxInput {
         prev_tx.reverse();
         result.extend(&prev_tx);
         result.extend(int_to_little_endian(BigUint::from(self.prev_index), 4u32));
-        result.extend(self.script_sig.serialize());
+        match &self.script_sig {
+            Some(script) => result.extend(script.serialize()),
+            None => (),
+        }
+        //result.extend(self.script_sig.serialize());
         result.extend(int_to_little_endian(BigUint::from(self.sequence), 4u32));
         result
     }
-    pub fn prev_tx(&self) -> &[u8] {
-        &self.prev_tx
+    pub fn prev_tx(&self) -> Vec<u8> {
+        self.prev_tx.to_vec()
     }
     pub fn prev_index(&self) -> u32 {
         self.prev_index
@@ -58,7 +69,7 @@ impl TxInput {
     pub fn sequence(&self) -> u32 {
         self.sequence
     }
-    pub fn script_sig(&self) -> Script {
+    pub fn script_sig(&self) -> Option<Script> {
         self.script_sig.clone()
     }
     pub fn fetch_tx(&self, testnet: bool) -> Result<Tx, reqwest::Error> {
@@ -73,5 +84,9 @@ impl TxInput {
     pub fn value(&self, testnet: bool) -> u64 {
         let tx = self.fetch_tx(testnet).unwrap();
         tx.tx_outs()[self.prev_index as usize].amount()
+    }
+    pub fn script_pubkey(&self, testnet: bool) -> Script {
+        let tx = self.fetch_tx(testnet).unwrap();
+        tx.tx_outs()[self.prev_index as usize].script_pubkey()
     }
 }

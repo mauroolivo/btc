@@ -5,6 +5,7 @@ use crate::tx_input::TxInput;
 use crate::tx_output::TxOutput;
 use crate::helpers::varint::{encode_varint, read_varint};
 use crate::helpers::hash256::hash256;
+use crate::helpers::sig_hash::SIGHASH_ALL;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Tx {
@@ -103,20 +104,32 @@ impl Tx {
         }
         sum_tx_ins - sum_tx_outs
     }
-/*    def fee(self):
-    '''Returns the fee of this transaction in satoshi'''
-    # initialize input sum and output sum
-    sum_tx_ins = 0
-    sum_tx_outs = 0
-    # use TxIn.value() to sum up the input amounts
-    for tx_in in self.tx_ins:
-    sum_tx_ins += tx_in.value()
-    # use TxOut.amount to sum up the output amounts
-    for tx_out in self.tx_outs:
-    sum_tx_outs += tx_out.amount
-    # fee is input sum - output sum
-    return sum_tx_ins - sum_tx_outs
-    raise NotImplementedError*/
+    pub fn sig_hash(&self, input_index: usize) -> BigUint {
+
+        let mut result = Vec::new();
+        result.extend(int_to_little_endian(BigUint::from(self.version), 4));
+        let num_ins = encode_varint(self.inputs.len() as u64).unwrap();
+
+        result.extend(num_ins);
+        for (idx, tx_in) in self.inputs.iter().enumerate() {
+            if idx == input_index {
+                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), Some(tx_in.script_pubkey(self.testnet)), tx_in.sequence());
+                result.extend(tx_input.serialize());
+            } else {
+                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), None, tx_in.sequence());
+                result.extend(tx_input.serialize());
+            }
+        }
+        result.extend(encode_varint(self.outputs.len() as u64).unwrap());
+        for tx_out in self.tx_outs() {
+            result.extend(tx_out.serialize());
+        }
+        result.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
+        result.extend(int_to_little_endian(BigUint::from(SIGHASH_ALL), 4));
+        let hash = hash256(&result);
+        let z = BigUint::from_bytes_be(hash.as_slice());
+        z
+    }
 }
 
 impl fmt::Display for Tx {
@@ -134,7 +147,8 @@ impl fmt::Display for Tx {
 
 #[cfg(test)]
 mod tests {
-
+    use crate::tx_fetcher::TxFetcher;
+    use num::Num;
     use super::*;
 
     #[test]
@@ -230,5 +244,22 @@ mod tests {
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, false).unwrap();
         assert_eq!(tx.fee(), 140500);
+    }
+    #[ignore]
+    #[test]
+    fn test_sig_hash() {
+        let z= BigUint::from_str_radix("27e0c5994dec7824e56dec6b2fcb342eb7cdb0d0957c2fce9882f715e85d81a6", 16).unwrap();
+        let tx_id = "452c629d67e41baec3ac6f04fe744b4b9617f8f859c63b3002f8684e7a4fee03";
+        let testnet = false;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(tx) => {
+                assert_eq!(tx.sig_hash(0), z);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
     }
 }
