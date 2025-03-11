@@ -3,6 +3,7 @@ use crate::tx::Tx;
 
 pub struct TxFetcher {
     api_url: String,
+    testnet: bool,
 }
 
 impl TxFetcher {
@@ -17,7 +18,7 @@ impl TxFetcher {
             ""
         };
 
-        TxFetcher{api_url: format!("{}{}/api", base_url, tnt)}
+        TxFetcher{api_url: format!("{}{}/api", base_url, tnt), testnet }
     }
     pub async fn fetch_async(&self, tx_id: &str) -> Result<Tx, reqwest::Error> {
 
@@ -72,7 +73,7 @@ impl TxFetcher {
                 //    raw_tx.remove(4);
                 // }
                 let mut stream = Cursor::new(raw_tx);
-                let tx = Tx::parse(&mut stream, false).unwrap();
+                let tx = Tx::parse(&mut stream, self.testnet).unwrap();
 
                 Ok(tx)
             }

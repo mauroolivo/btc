@@ -93,7 +93,7 @@ impl Tx {
         hash.reverse();
         hash.to_vec()
     }
-    pub fn fee(&self) -> u64 {
+    pub fn fee(&self) -> i64 {
         let mut sum_tx_ins: u64 = 0;
         let mut sum_tx_outs: u64 = 0;
         for tx_in in self.tx_ins() {
@@ -102,7 +102,7 @@ impl Tx {
         for tx_out in self.tx_outs() {
             sum_tx_outs += tx_out.amount()
         }
-        sum_tx_ins - sum_tx_outs
+        sum_tx_ins as i64 - sum_tx_outs as i64
     }
     pub fn sig_hash(&self, input_index: usize) -> BigUint {
 
@@ -129,6 +129,28 @@ impl Tx {
         let hash = hash256(&result);
         let z = BigUint::from_bytes_be(hash.as_slice());
         z
+    }
+    pub fn verify_input(&self, input_index: usize) -> bool {
+        let tx_ins = self.tx_ins(); //[input_index];
+        let tx_in = &tx_ins[input_index];
+        let prev_script_pubkey = tx_in.script_pubkey(self.testnet);
+        let z = self.sig_hash(input_index);
+        let combined_script = tx_in.script_sig().unwrap() + prev_script_pubkey;
+        combined_script.evaluate(&z)
+    }
+
+    pub fn verify(&self) -> bool {
+
+        if self.fee() < 0 {
+            return false;
+        }
+
+        for i in 0..self.tx_ins().len() {
+            if !self.verify_input(i) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -256,6 +278,38 @@ mod tests {
         match result {
             Ok(tx) => {
                 assert_eq!(tx.sig_hash(0), z);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+    #[ignore]
+    #[test]
+    fn test_verify_p2pkh() {
+
+        let tx_id = "452c629d67e41baec3ac6f04fe744b4b9617f8f859c63b3002f8684e7a4fee03";
+        let testnet = false;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+
+        let tx_id = "5418099cc755cb9dd3ebc6cf1a7888ad53a1a3beb5a025bce89eb1bf7f1650a2";
+        let testnet = true;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
             }
             Err(_) => {
                 assert!(false);
