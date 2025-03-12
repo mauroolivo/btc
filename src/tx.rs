@@ -142,11 +142,13 @@ impl Tx {
     pub fn verify(&self) -> bool {
 
         if self.fee() < 0 {
+            println!("----------> fee is negative");
             return false;
         }
 
         for i in 0..self.tx_ins().len() {
             if !self.verify_input(i) {
+                println!("----------> input is invalid {}/{}", i, self.tx_ins().len());
                 return false;
             }
         }
@@ -316,4 +318,22 @@ mod tests {
             }
         }
     }
+    /* to be implemented for p2sh
+    #[test]
+    fn test_verify_p2sh() {
+        let tx_id = "46df1a9484d0a81d03ce0ee543ab6e1a23ed06175c104a178268fad381216c2b";
+        let testnet = false;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(_) => {
+                assert!(false);
+            }
+        }
+    }
+     */
 }
