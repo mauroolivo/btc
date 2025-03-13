@@ -44,12 +44,28 @@ pub fn base58_encode_checksum(val: Vec<u8>) -> Vec<u8> {
     result.extend_from_slice(&hash[0..4]);
     base58_encode(result.to_vec())
 }
-
+pub fn decode_base58(val: Vec<u8>) -> Vec<u8> {
+    let mut num = BigUint::from(0u32);
+    for c in val {
+        num *= BigUint::from(58u8);
+        let index = BASE58_ALPHABET.iter().position(|&r| r == c).unwrap();
+        num += BigUint::from(index);
+    }
+    let combined = num.to_bytes_be();
+    let checksum = combined.as_slice()[combined.len() - 4..].to_vec();
+    let rest = combined.as_slice()[..combined.len() - 4].to_vec();
+    let hash = hash256(rest.as_slice());
+    if hash[..4] != checksum {
+        panic!("decode_base58 checksum mismatch");
+    }
+    let result = combined[1..combined.len() - 4].to_vec();
+    result
+}
 #[cfg(test)]
 mod tests {
-
+    use std::io::Write;
     use super::*;
-
+    use crate::helpers::hex::hex;
     #[test]
     fn encode_58() {
         let values = vec![
@@ -80,5 +96,23 @@ mod tests {
         let value: Vec<u8> = hex::decode(value).unwrap();
         let expected = "wdA2ffYs5cudrdkhFm5Ym94AuLvavacapuDBL2CAcvqYPkcvi";
         assert_eq!(base58_encode_checksum(value), expected.as_bytes().to_vec());
+    }
+    #[test]
+    fn decode_58() {
+
+        let addr = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf".as_bytes().to_vec();
+        let h160 = hex(decode_base58(addr.clone()));
+
+        let want = "507b27411ccf7f16f10297de6cef3f291623eddf";
+        assert_eq!(want, h160);
+
+        // prefix: 0x00 mainnet, 0x6f testnet
+        let mut buffer = Vec::new();
+        let bytes = hex::decode(h160).unwrap();
+
+        let _ = buffer.write_all(&[0x6f]);
+        let _ = buffer.write_all(&bytes);
+        let got = base58_encode_checksum(buffer);
+        assert_eq!(addr, got);
     }
 }
