@@ -1,5 +1,5 @@
 use std::ops::{Add};
-use std::{io::{Cursor, Read, Error}};
+use std::{io::{Cursor, Read, Error, Write}};
 use crate::helpers::varint::{encode_varint, read_varint};
 use core::fmt;
 use num::{BigUint, ToPrimitive};
@@ -211,6 +211,15 @@ impl Script {
             return false;
         }
         true
+    }
+    pub fn p2pkh_script(&self, h160: Vec<u8>) -> Self {
+        let mut cmds: Vec<Vec<u8>> = Vec::new();
+        cmds.push(vec![0x76]);; // OP_DUP
+        cmds.push(vec![0xa9]);; // OP_HASH160
+        cmds.push(h160);
+        cmds.push(vec![0x88]);; // OP_EQUALVERIFY
+        cmds.push(vec![0xac]);; // OP_CHECKSIG
+        Script{cmds:cmds}
     }
 }
 impl Add for Script {
