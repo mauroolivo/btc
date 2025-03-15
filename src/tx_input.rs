@@ -1,5 +1,5 @@
 use crate::script::Script;
-use std::{io::{Cursor, Read, Error}};
+use std::{fmt, io::{Cursor, Read, Error}};
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::tx_fetcher::TxFetcher;
@@ -88,5 +88,25 @@ impl TxInput {
     pub fn script_pubkey(&self, testnet: bool) -> Script {
         let tx = self.fetch_tx(testnet).unwrap();
         tx.tx_outs()[self.prev_index as usize].script_pubkey()
+    }
+}
+
+impl fmt::Display for TxInput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+
+        let mut s = String::new();
+        if self.script_sig().is_some() {
+            s = format!("{}", self.script_sig().unwrap());
+        }
+
+        write!(
+            f,
+            "TxInput {{ prev_tx: {:?}, prev_index: {}, script_sig: {}, sequence: {} }}",
+            hex(self.prev_tx()),
+            self.prev_index(),
+            s,
+            self.sequence()
+        )
     }
 }

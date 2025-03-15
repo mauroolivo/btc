@@ -1,6 +1,6 @@
 
 use crate::script::Script;
-use std::{io::{Cursor, Read}};
+use std::{fmt, io::{Cursor, Read}};
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 
@@ -10,6 +10,12 @@ pub struct TxOutput {
     script_pubkey: Script,
 }
 impl TxOutput {
+    pub fn new(amount: u64, script_pubkey: Script) -> TxOutput {
+        TxOutput {
+            amount,
+            script_pubkey,
+        }
+    }
     pub fn parse(stream: &mut Cursor<Vec<u8>>) -> Result<Self, std::io::Error> {
         let mut buffer = [0; 8];
         stream.read(&mut buffer)?;
@@ -30,5 +36,15 @@ impl TxOutput {
     }
     pub fn script_pubkey(&self) -> Script {
         self.script_pubkey.clone()
+    }
+}
+impl fmt::Display for TxOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TxOutput {{ value: {}, script_pubkey: {} }}",
+            self.amount(),
+            self.script_pubkey()
+        )
     }
 }

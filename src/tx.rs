@@ -158,12 +158,20 @@ impl Tx {
 
 impl fmt::Display for Tx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut inputs_string = String::new();
+        for i in &self.inputs {
+            inputs_string = format!("{}", i);
+        }
+        let mut outputs_string = String::new();
+        for o in self.tx_outs() {
+            outputs_string.push_str(format!("{} ", o).as_str());
+        }
         write!(
             f,
             "version: {}, inputs: {}, outputs: {}, locktime: {}",
             self.version,
-            self.inputs.len(),
-            self.outputs.len(),
+            inputs_string,
+            outputs_string,
             self.locktime
         )
     }
@@ -173,6 +181,8 @@ impl fmt::Display for Tx {
 mod tests {
     use crate::tx_fetcher::TxFetcher;
     use num::Num;
+    use crate::helpers::base58::decode_base58;
+    use crate::script::Script;
     use super::*;
 
     #[test]
@@ -285,6 +295,29 @@ mod tests {
                 assert!(false);
             }
         }
+    }
+    #[test]
+    fn test_tx_create_and_sign() {
+        let prev_tx = hex::decode("0d6fe5213c0b3291f208cba8bfb59b7476dffacc4e5cb66f6eb20a080843a299").unwrap();
+        let prev_tx_index = 13u32;
+        let sequence = 0xffffffffu32;
+        let tx_in = TxInput::new(prev_tx, prev_tx_index, None, sequence);
+
+        let satoshi = 100_000_000u64;
+        // target
+        let target_amount: u64 = (0.1f64 * satoshi as f64) as u64;
+        let target_h160 = decode_base58("mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf".as_bytes().to_vec());
+        let target_script = Script::p2pkh_script(target_h160);
+        let target_output = TxOutput::new(target_amount, target_script);
+        // change
+        let change_amount: u64 = (0.33f64 * satoshi as f64) as u64;
+        let change_h160 = decode_base58("mzx5YhAH9kNHtcN481u6WkjeHjYtVeKVh2".as_bytes().to_vec());
+        let change_script = Script::p2pkh_script(change_h160);
+        let change_output = TxOutput::new(change_amount, change_script);
+
+        let tx = Tx::new(1u32, vec![tx_in], vec![change_output, target_output], 0u32, true);
+        println!("{}", tx);
+
     }
     #[ignore]
     #[test]
