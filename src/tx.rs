@@ -6,6 +6,7 @@ use crate::tx_output::TxOutput;
 use crate::helpers::varint::{encode_varint, read_varint};
 use crate::helpers::hash256::hash256;
 use crate::helpers::sig_hash::SIGHASH_ALL;
+use crate::script::Script;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Tx {
@@ -113,10 +114,10 @@ impl Tx {
         result.extend(num_ins);
         for (idx, tx_in) in self.inputs.iter().enumerate() {
             if idx == input_index {
-                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), Some(tx_in.script_pubkey(self.testnet)), tx_in.sequence());
+                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), tx_in.script_pubkey(self.testnet), tx_in.sequence());
                 result.extend(tx_input.serialize());
             } else {
-                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), None, tx_in.sequence());
+                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), Script::new(vec![]), tx_in.sequence());
                 result.extend(tx_input.serialize());
             }
         }
@@ -135,10 +136,9 @@ impl Tx {
         let tx_in = &tx_ins[input_index];
         let prev_script_pubkey = tx_in.script_pubkey(self.testnet);
         let z = self.sig_hash(input_index);
-        let combined_script = tx_in.script_sig().unwrap() + prev_script_pubkey;
+        let combined_script = tx_in.script_sig() + prev_script_pubkey;
         combined_script.evaluate(&z)
     }
-
     pub fn verify(&self) -> bool {
 
         if self.fee() < 0 {
@@ -168,7 +168,8 @@ impl fmt::Display for Tx {
         }
         write!(
             f,
-            "version: {}, inputs: {}, outputs: {}, locktime: {}",
+            "id: {}, version: {}, inputs: {}, outputs: {}, locktime: {}",
+            self.id(),
             self.version,
             inputs_string,
             outputs_string,
@@ -184,7 +185,6 @@ mod tests {
     use crate::helpers::base58::decode_base58;
     use crate::script::Script;
     use super::*;
-
     #[test]
     fn parse_version() {
         let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
@@ -297,11 +297,12 @@ mod tests {
         }
     }
     #[test]
-    fn test_tx_create_and_sign() {
+    fn test_tx_create() {
+        // tx create
         let prev_tx = hex::decode("0d6fe5213c0b3291f208cba8bfb59b7476dffacc4e5cb66f6eb20a080843a299").unwrap();
         let prev_tx_index = 13u32;
         let sequence = 0xffffffffu32;
-        let tx_in = TxInput::new(prev_tx, prev_tx_index, None, sequence);
+        let tx_in = TxInput::new(prev_tx, prev_tx_index, Script::new(vec![]), sequence);
 
         let satoshi = 100_000_000u64;
         // target
@@ -317,7 +318,6 @@ mod tests {
 
         let tx = Tx::new(1u32, vec![tx_in], vec![change_output, target_output], 0u32, true);
         println!("{}", tx);
-
     }
     #[ignore]
     #[test]

@@ -10,11 +10,11 @@ use crate::tx::Tx;
 pub struct TxInput {
     prev_tx: Vec<u8>,
     prev_index: u32,
-    script_sig: Option<Script>,
+    script_sig: Script,
     sequence: u32,
 }
 impl TxInput {
-    pub fn new(prev_tx: Vec<u8>, prev_index: u32, script_sig: Option<Script>, sequence: u32) -> Self {
+    pub fn new(prev_tx: Vec<u8>, prev_index: u32, script_sig: Script, sequence: u32) -> Self {
         TxInput {
             prev_tx: prev_tx,
             prev_index: prev_index,
@@ -41,7 +41,7 @@ impl TxInput {
         Ok(TxInput {
             prev_tx,
             prev_index,
-            script_sig: Some(script_sig),
+            script_sig: script_sig,
             sequence,
         })
     }
@@ -52,11 +52,7 @@ impl TxInput {
         prev_tx.reverse();
         result.extend(&prev_tx);
         result.extend(int_to_little_endian(BigUint::from(self.prev_index), 4u32));
-        match &self.script_sig {
-            Some(script) => result.extend(script.serialize()),
-            None => (),
-        }
-        //result.extend(self.script_sig.serialize());
+        result.extend(self.script_sig.serialize());
         result.extend(int_to_little_endian(BigUint::from(self.sequence), 4u32));
         result
     }
@@ -69,7 +65,7 @@ impl TxInput {
     pub fn sequence(&self) -> u32 {
         self.sequence
     }
-    pub fn script_sig(&self) -> Option<Script> {
+    pub fn script_sig(&self) -> Script {
         self.script_sig.clone()
     }
     pub fn fetch_tx(&self, testnet: bool) -> Result<Tx, reqwest::Error> {
@@ -94,18 +90,12 @@ impl TxInput {
 impl fmt::Display for TxInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-
-        let mut s = String::new();
-        if self.script_sig().is_some() {
-            s = format!("{}", self.script_sig().unwrap());
-        }
-
         write!(
             f,
             "TxInput {{ prev_tx: {:?}, prev_index: {}, script_sig: {}, sequence: {} }}",
             hex(self.prev_tx()),
             self.prev_index(),
-            s,
+            self.script_sig(),
             self.sequence()
         )
     }
