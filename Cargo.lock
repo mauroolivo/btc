@@ -69,8 +69,10 @@ dependencies = [
 name = "btc"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "dotenv",
  "hex",
+ "hmac",
  "num",
  "rand",
  "reqwest",

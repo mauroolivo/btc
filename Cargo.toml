@@ -14,3 +14,5 @@ reqwest = { version = "0.12.12", features = ["json", "blocking"] }
 tokio = { version = "1.43.0", features = ["full"] }
 dotenv = "0.15.0"
 sha1 = "0.11.0-pre.4"
+base64 = "0.22.1"
+hmac = "0.13.0-pre.4"
