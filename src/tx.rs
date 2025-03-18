@@ -184,6 +184,8 @@ mod tests {
     use num::Num;
     use crate::helpers::base58::decode_base58;
     use crate::script::Script;
+    use crate::private_key::PrivateKey;
+    use crate::helpers::hex::hex;
     use super::*;
     #[test]
     fn parse_version() {
@@ -318,6 +320,34 @@ mod tests {
 
         let tx = Tx::new(1u32, vec![tx_in], vec![change_output, target_output], 0u32, true);
         println!("{}", tx);
+    }
+    #[test]
+    fn test_tx_sign() {
+
+        let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
+        let mut stream = Cursor::new(raw_tx.clone());
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        // tx sign
+        let z = tx.sig_hash(0); // in this case we have only 1 input
+        let hash = hash256(b"my secret");
+        let e = BigUint::from_bytes_be(hash.as_slice());
+        let private_key = PrivateKey::new(&e);
+        let der = private_key.sign(&z).der();
+
+        let mut sig: Vec<u8> = vec![];
+        sig.extend(der);
+        sig.extend(SIGHASH_ALL.to_le_bytes());
+        let sec = private_key.point().sec(false);
+        let mut cmds: Vec<Vec<u8>> = vec![];
+        cmds.push(sig);
+        cmds.push(sec);
+        let script_sig = Script::new(cmds);
+
+        let tx_in = tx.tx_ins()[0].clone();
+        let tx_in_update = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), script_sig, tx_in.sequence());
+        let tx = Tx::new(tx.version(), vec![tx_in_update], tx.tx_outs(), tx.locktime, tx.testnet);
+        println!("{}", tx);
+        println!("{:?}", hex(tx.serialize()));
     }
     #[ignore]
     #[test]
