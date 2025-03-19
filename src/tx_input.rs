@@ -10,7 +10,7 @@ use crate::tx::Tx;
 pub struct TxInput {
     prev_tx: Vec<u8>,
     prev_index: u32,
-    script_sig: Script,
+    pub script_sig: Script,
     sequence: u32,
 }
 impl TxInput {

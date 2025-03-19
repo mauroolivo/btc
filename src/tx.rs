@@ -6,6 +6,7 @@ use crate::tx_output::TxOutput;
 use crate::helpers::varint::{encode_varint, read_varint};
 use crate::helpers::hash256::hash256;
 use crate::helpers::sig_hash::SIGHASH_ALL;
+use crate::private_key::PrivateKey;
 use crate::script::Script;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -44,8 +45,8 @@ impl Tx {
         stream.read(&mut buffer)?;
         let version = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
 
-        let mut inputs:Vec<TxInput> = Vec::new();
-        let mut outputs:Vec<TxOutput> = Vec::new();
+        let mut inputs: Vec<TxInput> = Vec::new();
+        let mut outputs: Vec<TxOutput> = Vec::new();
 
         if let Ok(num_inputs) = read_varint(stream) {
             for _ in 0..num_inputs {
@@ -106,7 +107,6 @@ impl Tx {
         sum_tx_ins as i64 - sum_tx_outs as i64
     }
     pub fn sig_hash(&self, input_index: usize) -> BigUint {
-
         let mut result = Vec::new();
         result.extend(int_to_little_endian(BigUint::from(self.version), 4));
         let num_ins = encode_varint(self.inputs.len() as u64).unwrap();
@@ -140,7 +140,6 @@ impl Tx {
         combined_script.evaluate(&z)
     }
     pub fn verify(&self) -> bool {
-
         if self.fee() < 0 {
             println!("----------> fee is negative");
             return false;
@@ -153,6 +152,20 @@ impl Tx {
             }
         }
         true
+    }
+    pub fn sign_input(&mut self, input_index: usize, private_key: &PrivateKey) -> bool {
+        let z = self.sig_hash(input_index);
+        let der = private_key.sign(&z).der();
+        let mut sig: Vec<u8> = vec![];
+        sig.extend(der);
+        sig.extend(SIGHASH_ALL.to_le_bytes());
+        let sec = private_key.point().sec(false);
+        let mut cmds: Vec<Vec<u8>> = vec![];
+        cmds.push(sig);
+        cmds.push(sec);
+        let combined_script = Script::new(cmds);
+        self.inputs[input_index].script_sig = combined_script;
+        self.verify_input(input_index)
     }
 }
 
