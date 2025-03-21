@@ -3,7 +3,6 @@ use std::{fmt, io::{Cursor, Read, Error}};
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::tx_fetcher::TxFetcher;
-use crate::helpers::hex::hex;
 use crate::tx::Tx;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -69,7 +68,7 @@ impl TxInput {
         self.script_sig.clone()
     }
     pub fn fetch_tx(&self, testnet: bool) -> Result<Tx, reqwest::Error> {
-        let tx_id = hex(self.prev_tx().to_vec());
+        let tx_id = hex::encode(self.prev_tx().to_vec());
         let tf = TxFetcher::new(testnet);
         let result = tf.fetch_sync(tx_id.as_str());
         match result {
@@ -93,7 +92,7 @@ impl fmt::Display for TxInput {
         write!(
             f,
             "TxInput {{ prev_tx: {:?}, prev_index: {}, script_sig: {}, sequence: {} }}",
-            hex(self.prev_tx()),
+            hex::encode(self.prev_tx()),
             self.prev_index(),
             self.script_sig(),
             self.sequence()

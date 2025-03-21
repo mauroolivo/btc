@@ -198,7 +198,7 @@ mod tests {
     use crate::helpers::base58::decode_base58;
     use crate::script::Script;
     use crate::private_key::PrivateKey;
-    use crate::helpers::hex::hex;
+
     use super::*;
     #[test]
     fn test_parse_version() {
@@ -360,7 +360,7 @@ mod tests {
         let tx_in_update = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), script_sig, tx_in.sequence());
         let tx = Tx::new(tx.version(), vec![tx_in_update], tx.tx_outs(), tx.locktime, tx.testnet);
         println!("{}", tx);
-        println!("{:?}", hex(tx.serialize()));
+        println!("{:?}", hex::encode(tx.serialize()));
     }
     #[ignore]
     #[test]

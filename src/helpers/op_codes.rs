@@ -4,6 +4,7 @@ use sha2::{Digest, Sha256};
 use sha1::Sha1;
 use ripemd::{Ripemd160};
 use crate::point::Point;
+// use crate::helpers::hex;
 use crate::signature::Signature;
 
 pub fn is_op(cmd: &Vec<u8>) -> bool {

@@ -65,7 +65,7 @@ pub fn decode_base58(val: Vec<u8>) -> Vec<u8> {
 mod tests {
     use std::io::Write;
     use super::*;
-    use crate::helpers::hex::hex;
+
     #[test]
     fn encode_58() {
         let values = vec![
@@ -101,7 +101,7 @@ mod tests {
     fn decode_58() {
 
         let addr = "mnrVtF8DWjMu839VW3rBfgYaAfKk8983Xf".as_bytes().to_vec();
-        let h160 = hex(decode_base58(addr.clone()));
+        let h160 = hex::encode(decode_base58(addr.clone()));
 
         let want = "507b27411ccf7f16f10297de6cef3f291623eddf";
         assert_eq!(want, h160);
