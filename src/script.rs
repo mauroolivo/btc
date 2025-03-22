@@ -200,7 +200,29 @@ impl Script {
                     }
                 }
             } else {
-                stack.push(cmd);
+                stack.push(cmd.clone());
+                // p2sh form here. Previous row in p2sh is the push of the RedeemScript
+                if cmds.len() == 3 && self.is_p2sh(&cmds) {
+                    cmds.pop();
+                    let h160 = cmds.pop();
+                    cmds.pop();
+                    if !op_hash160(&mut stack) {
+                        return false
+                    }
+                    stack.push(h160.unwrap());
+                    if !op_equal(&mut stack) {
+                        return false
+                    }
+                    if !op_verify(&mut stack) {
+                        println!("bad p2sh h160");
+                        return false
+                    }
+                    let mut redeem_script: Vec<u8> = vec![];
+                    redeem_script.extend(encode_varint(cmd.len() as u64).unwrap());
+                    redeem_script.extend(cmd);
+                    let mut cursor = Cursor::new(redeem_script);
+                    cmds.extend(Script::parse(&mut cursor).unwrap().cmds);
+                }
             }
         }
         if stack.len() == 0 {
@@ -211,6 +233,9 @@ impl Script {
             return false;
         }
         true
+    }
+    fn is_p2sh(&self, cmds: &Vec<Vec<u8>>) -> bool {
+        cmds[0] == [0xa9] && cmds[1].len() == 20 && cmds[2] == [0x87]
     }
     pub fn p2pkh_script(h160: Vec<u8>) -> Self {
         let mut cmds: Vec<Vec<u8>> = Vec::new();
