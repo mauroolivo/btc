@@ -8,7 +8,7 @@ use crate::helpers::op_codes::*;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Script {
-    cmds: Vec<Vec<u8>>,
+    pub cmds: Vec<Vec<u8>>,
 }
 impl Script {
     pub fn new(cmds: Vec<Vec<u8>>) -> Self {
@@ -71,7 +71,7 @@ impl Script {
         for cmd in &self.cmds {
             if cmd.len() == 1 {
                 if !is_op(&cmd) {
-                    panic!("OP no handled");
+                    panic!("OP no handled: {:?}", cmd);
                 }
                 let op_code = cmd[0];
                 result.extend(int_to_little_endian(BigUint::from(op_code), 1));
@@ -245,6 +245,12 @@ impl Script {
         cmds.push(vec![0x88]); // OP_EQUALVERIFY
         cmds.push(vec![0xac]); // OP_CHECKSIG
         Script{cmds:cmds}
+    }
+    pub fn is_p2pkh_script_pubkey(&self) -> bool {
+        self.cmds.len() == 5 && self.cmds[0] == [0x76] && self.cmds[1] == [0xa9] && self.cmds[2].len() == 20 && self.cmds[3] == [0x88] && self.cmds[4] == [0xac]
+    }
+    pub fn is_p2sh_script_pubkey(&self) -> bool {
+        self.cmds.len() == 3 && self.cmds[0] == [0xa9] && self.cmds[1].len() == 20 && self.cmds[2] == [0x87]
     }
 }
 impl Add for Script {

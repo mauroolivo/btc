@@ -106,16 +106,29 @@ impl Tx {
         }
         sum_tx_ins as i64 - sum_tx_outs as i64
     }
-    pub fn sig_hash(&self, input_index: usize) -> BigUint {
+    pub fn sig_hash(&self, input_index: usize, redeem_script: Option<Script>) -> BigUint {
         let mut result = Vec::new();
         result.extend(int_to_little_endian(BigUint::from(self.version), 4));
         let num_ins = encode_varint(self.inputs.len() as u64).unwrap();
-
         result.extend(num_ins);
+
         for (idx, tx_in) in self.inputs.iter().enumerate() {
             if idx == input_index {
-                let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), tx_in.script_pubkey(self.testnet), tx_in.sequence());
-                result.extend(tx_input.serialize());
+                // if the RedeemScript was passed in, that's the ScriptSig
+                // otherwise the previous tx's ScriptPubkey is the ScriptSig
+                match &redeem_script {
+                    Some(script) => {
+                        println!("WITH REDEEM");
+                        let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), script.clone(), tx_in.sequence());
+                        result.extend(tx_input.serialize());
+                    }
+
+                    None => {
+                        println!("NO REDEEM");
+                        let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), tx_in.script_pubkey(self.testnet), tx_in.sequence());
+                        result.extend(tx_input.serialize());
+                    }
+                }
             } else {
                 let tx_input = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), Script::new(vec![]), tx_in.sequence());
                 result.extend(tx_input.serialize());
@@ -135,7 +148,28 @@ impl Tx {
         let tx_ins = self.tx_ins(); //[input_index];
         let tx_in = &tx_ins[input_index];
         let prev_script_pubkey = tx_in.script_pubkey(self.testnet);
-        let z = self.sig_hash(input_index);
+
+        let mut redeem_script: Option<Script> = None;
+        if prev_script_pubkey.is_p2sh_script_pubkey() {
+            // the last cmd in a p2sh is the RedeemScript
+            let mut script_sig = tx_in.script_sig.clone();
+            let cmd = script_sig.cmds.pop().unwrap();
+            let mut raw_redeem: Vec<u8> = vec![];
+            let len_raw_redeem = encode_varint(cmd.len() as u64).unwrap();
+            raw_redeem.extend(len_raw_redeem);
+            raw_redeem.extend(cmd);
+            let mut stream = Cursor::new(raw_redeem);
+            match Script::parse(&mut stream) {
+                Ok(script) => {
+                    redeem_script = Some(script);
+                }
+                Err(e) => {
+                    println!("{:?}", e);
+                    panic!("Can't parse redeem script");
+                }
+            }
+        }
+        let z = self.sig_hash(input_index, redeem_script);
         let combined_script = tx_in.script_sig() + prev_script_pubkey;
         combined_script.evaluate(&z)
     }
@@ -154,7 +188,7 @@ impl Tx {
         true
     }
     pub fn sign_input(&mut self, input_index: usize, private_key: &PrivateKey) -> bool {
-        let z = self.sig_hash(input_index);
+        let z = self.sig_hash(input_index, None);
         let der = private_key.sign(&z).der();
         let mut sig: Vec<u8> = vec![];
         sig.extend(der);
@@ -304,7 +338,7 @@ mod tests {
         let result = tf.fetch_sync(tx_id);
         match result {
             Ok(tx) => {
-                assert_eq!(tx.sig_hash(0), z);
+                assert_eq!(tx.sig_hash(0, None), z);
             }
             Err(_) => {
                 assert!(false);
@@ -341,7 +375,7 @@ mod tests {
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, false).unwrap();
         // tx sign
-        let z = tx.sig_hash(0); // in this case we have only 1 input
+        let z = tx.sig_hash(0, None); // in this case we have only 1 input
         let hash = hash256(b"my secret");
         let e = BigUint::from_bytes_be(hash.as_slice());
         let private_key = PrivateKey::new(&e);
@@ -375,11 +409,12 @@ mod tests {
                 println!("{:?}", tx);
                 assert_eq!(tx.verify(), true);
             }
-            Err(_) => {
+            Err(e) => {
+                println!("{:?}", e);
                 assert!(false);
             }
         }
-
+        /* Testnet down
         let tx_id = "5418099cc755cb9dd3ebc6cf1a7888ad53a1a3beb5a025bce89eb1bf7f1650a2";
         let testnet = true;
         let tf = TxFetcher::new(testnet);
@@ -389,10 +424,12 @@ mod tests {
                 println!("{:?}", tx);
                 assert_eq!(tx.verify(), true);
             }
-            Err(_) => {
+            Err(e) => {
+                println!("{:?}", e);
                 assert!(false);
             }
         }
+        */
     }
     /* to be implemented for p2sh
     #[test]
