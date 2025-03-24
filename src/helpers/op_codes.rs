@@ -978,8 +978,58 @@ pub fn op_checksig(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
 pub fn op_checksigverify(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
     op_checksig(stack, z) && op_verify(stack)
 }
-pub fn op_checkmultisig(_stack: &mut Vec<Vec<u8>>, _z: &BigUint) -> bool {
-    panic!("op_checkmultisig not implemented")
+pub fn op_checkmultisig(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
+    if stack.len() < 1 {
+        return false;
+    }
+    // m of n : m signatures oof n pub keys
+    let n = decode_num(&stack.pop().unwrap()) as usize;
+    if stack.len() < (n + 1) {
+        return false;
+    }
+    let mut sec_pubkeys: Vec<Vec<u8>> = vec![];
+    for _ in 0..n {
+        sec_pubkeys.push(stack.pop().unwrap())
+    }
+
+    let m = decode_num(&stack.pop().unwrap()) as usize;
+    if stack.len() < (m + 1) {
+        return false;
+    }
+    let mut der_signatures: Vec<Vec<u8>> = vec![];
+    for _ in 0..m {
+        let mut der_signature = stack.pop().unwrap();
+        der_signature.pop(); // der signature is assumed to be signed with SIGHASH_ALL
+        der_signatures.push(der_signature);
+    }
+
+    // OP_CHECKMULTISIG bug
+    stack.pop();
+
+    let mut points: Vec<Point> = vec![];
+    let mut sigs: Vec<Signature> = vec![];
+
+    for sec_pubkey in sec_pubkeys {
+        points.push(Point::parse(sec_pubkey.as_slice()));
+    }
+    for der in der_signatures {
+        sigs.push(Signature::parse(&der).unwrap());
+    }
+
+    for sig in sigs {
+        // if we have no more points, signatures are no good
+        if points.len() == 0 {
+            return false;
+        }
+        while points.len() > 0 {
+            let point = points.remove(0);
+            if point.verify(z, &sig) {
+                break
+            } else { println!("not verfied"); }
+        }
+    }
+    stack.push(encode_num(1));
+    true
 }
 pub fn op_checkmultisigverify(stack: &mut Vec<Vec<u8>>, z: &BigUint) -> bool {
     op_checkmultisig(stack, z) && op_verify(stack)
