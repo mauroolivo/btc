@@ -1080,3 +1080,13 @@ pub fn op_checksequenceverify(stack: &mut Vec<Vec<u8>>, version: u32, sequence: 
     }
     true
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_op_hash160() {
+        let mut stack: Vec<Vec<u8>> = vec![b"hello world".to_vec()];
+        assert_eq!(op_hash160(&mut stack), true);
+        assert_eq!(hex::encode(stack[0].clone()), "d7d5ee7824ff93f94c3055af9382c86c68b5ca92");
+    }
+}
