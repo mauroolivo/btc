@@ -431,7 +431,6 @@ mod tests {
         }
         */
     }
-    /* to be implemented for p2sh
     #[test]
     fn test_verify_p2sh() {
         let tx_id = "46df1a9484d0a81d03ce0ee543ab6e1a23ed06175c104a178268fad381216c2b";
@@ -448,5 +447,4 @@ mod tests {
             }
         }
     }
-     */
 }

@@ -96,6 +96,7 @@ pub fn op_code_names() -> HashMap<u8, &'static str> {
     op_code_names.insert(OP_CODESEPARATOR, "OP_CODESEPARATOR");
     op_code_names.insert(OP_CHECKSIG, "OP_CHECKSIG");
     op_code_names.insert(OP_CHECKSIGVERIFY, "OP_CHECKSIGVERIFY");
+    op_code_names.insert(OP_CHECKMULTISIG, "OP_CHECKMULTISIG");
 
     op_code_names
 }
@@ -1098,6 +1099,24 @@ mod tests {
         let sig = hex::decode("3045022000eff69ef2b1bd93a66ed5219add4fb51e11a840f404876325a1e8ffe0529a2c022100c7207fee197d27c618aea621406f6bf5ef6fca38681d82b2f06fddbdce6feab601").unwrap();
         let mut stack: Vec<Vec<u8>> = vec![sig, sec];
         assert_eq!(op_checksig(&mut stack, &z), true);
+        assert_eq!(decode_num(stack[0].as_slice()), 1);
+    }
+    #[test]
+    fn test_op_checkmultisig() {
+        let z = BigUint::from_str_radix("e71bfa115715d6fd33796948126f40a8cdd39f187e4afb03896795189fe1423c", 16).unwrap();
+        let sig1 = hex::decode("3045022100dc92655fe37036f47756db8102e0d7d5e28b3beb83a8fef4f5dc0559bddfb94e02205a36d4e4e6c7fcd16658c50783e00c341609977aed3ad00937bf4ee942a8993701").unwrap();
+        let sig2 = hex::decode("3045022100da6bee3c93766232079a01639d07fa869598749729ae323eab8eef53577d611b02207bef15429dcadce2121ea07f233115c6f09034c0be68db99980b9a6c5e75402201").unwrap();
+        let sec1 = hex::decode("022626e955ea6ea6d98850c994f9107b036b1334f18ca8830bfff1295d21cfdb70").unwrap();
+        let sec2 = hex::decode("03b287eaf122eea69030a0e9feed096bed8045c8b98bec453e1ffac7fbdbd4bb71").unwrap();
+        let mut stack: Vec<Vec<u8>> = vec![];
+        stack.push(b"".to_vec());
+        stack.push(sig1);
+        stack.push(sig2);
+        stack.push(b"\x02".to_vec());
+        stack.push(sec1);
+        stack.push(sec2);
+        stack.push(b"\x02".to_vec());
+        assert_eq!(op_checkmultisig(&mut stack, &z), true);
         assert_eq!(decode_num(stack[0].as_slice()), 1);
     }
 }
