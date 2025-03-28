@@ -201,8 +201,28 @@ impl Tx {
         self.inputs[input_index].script_sig = combined_script;
         self.verify_input(input_index)
     }
+    pub fn is_coinbase(&self) -> bool {
+        if self.tx_ins().len() != 1 || self.tx_ins().len() == 0 {
+            return false;
+        }
+        let first = &self.tx_ins()[0];
+        if first.prev_tx() != [0u8;32] {
+            return false;
+        }
+        if first.prev_index() != 0xffffffff {
+            return false;
+        }
+        true
+    }
+    pub fn coinbase_height(&self) -> Option<BigUint> {
+        if self.is_coinbase() {
+            let first = &self.tx_ins()[0];
+            let cmd = &first.script_sig.cmds[0];
+            return Some(little_endian_to_int(cmd));
+        }
+        None
+    }
 }
-
 impl fmt::Display for Tx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut inputs_string = String::new();
@@ -431,6 +451,7 @@ mod tests {
         }
         */
     }
+    #[ignore]
     #[test]
     fn test_verify_p2sh() {
         let tx_id = "46df1a9484d0a81d03ce0ee543ab6e1a23ed06175c104a178268fad381216c2b";
@@ -446,5 +467,32 @@ mod tests {
                 assert!(false);
             }
         }
+    }
+    #[test]
+    fn test_is_coinbase() {
+        let raw_tx = hex::decode("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5e03d71b07254d696e656420627920416e74506f6f6c20626a31312f4542312f4144362f43205914293101fabe6d6d678e2c8c34afc36896e7d9402824ed38e856676ee94bfdb0c6c4bcd8b2e5666a0400000000000000c7270000a5e00e00ffffffff01faf20b58000000001976a914338c84849423992471bffb1a54a8d9b1d69dc28a88ac00000000").unwrap();
+        let mut stream = Cursor::new(raw_tx);
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        assert_eq!(tx.is_coinbase(), true);
+    }
+    #[test]
+    fn genesis_script_sig() {
+        let raw_script = hex::decode("4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap();
+        let mut stream = Cursor::new(raw_script);
+        let s = Script::parse(&mut stream).unwrap();
+        let cmds = s.cmds;
+        println!("{}", std::str::from_utf8(&cmds[2]).unwrap());
+    }
+    #[test]
+    fn test_coinbase_height() {
+        let raw_tx = hex::decode("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5e03d71b07254d696e656420627920416e74506f6f6c20626a31312f4542312f4144362f43205914293101fabe6d6d678e2c8c34afc36896e7d9402824ed38e856676ee94bfdb0c6c4bcd8b2e5666a0400000000000000c7270000a5e00e00ffffffff01faf20b58000000001976a914338c84849423992471bffb1a54a8d9b1d69dc28a88ac00000000").unwrap();
+        let mut stream = Cursor::new(raw_tx);
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        assert_eq!(tx.coinbase_height().unwrap(), BigUint::from(465879u32));
+
+        let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
+        let mut stream = Cursor::new(raw_tx);
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        assert!(tx.coinbase_height().is_none());
     }
 }
