@@ -1,9 +1,10 @@
 use chrono::{Utc, DateTime};
 use std::{io::{Cursor, Read}};
-use num::{BigUint, ToPrimitive};
+use num::{pow, BigUint, ToPrimitive};
+use crate::helpers::block_bits::bits_to_target;
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::hash256::hash256;
-
+use num::Num;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Block {
     version: u32,
@@ -89,10 +90,31 @@ impl Block {
     pub fn time_to_date(&self) -> DateTime<Utc> {
         DateTime::from_timestamp(self.timestamp as i64, 0).unwrap()
     }
+    pub fn target(&self) -> BigUint {
+        bits_to_target(&self.bits)
+    }
+    pub fn difficulty(&self) -> BigUint {
+        // Returns the block difficulty based on the bits
+        // lowest difficulty has bits that equal 0xffff001d
+        let exponent = self.bits[self.bits.len() - 1];
+        let coefficient = little_endian_to_int(&self.bits[0..self.bits.len() - 1]);
+        let target = coefficient * BigUint::from(pow(BigUint::from(256u32), exponent as usize - 3));
+        let exponent_lowest = 0x1dusize;
+        let coefficient_lowest = BigUint::from_str_radix("ffff", 16).unwrap();
+        let target_lowest = coefficient_lowest * BigUint::from(pow(BigUint::from(256u32), exponent_lowest - 3));
+        target_lowest / target
+    }
+    pub fn check_pow(&self) -> bool {
+        let proof = little_endian_to_int(&hash256(self.serialize().as_slice()));
+        proof < self.target()
+    }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num::Num;
+    use crate::helpers::block_bits::target_to_bits;
+
     #[test]
     fn test_parse_block() {
         let block_raw = hex::decode("020000208ec39428b17323fa0ddec8e887b4a7c53b8c0a0a220cfd0000000000000000005b0750fce0a889502d40508d39576821155e9c9e3f5c3157f961db38fd8b25be1e77a759e93c0118a4ffd71d").unwrap();
@@ -172,5 +194,46 @@ mod tests {
         let mut cursor = Cursor::new(block_raw.clone());
         let block = Block::parse(&mut cursor).unwrap();
         println!("{}", block.time_to_date())
+    }
+    #[test]
+    fn test_target() {
+        let block_raw = hex::decode("020000208ec39428b17323fa0ddec8e887b4a7c53b8c0a0a220cfd0000000000000000005b0750fce0a889502d40508d39576821155e9c9e3f5c3157f961db38fd8b25be1e77a759e93c0118a4ffd71d").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let block = Block::parse(&mut cursor).unwrap();
+        let target = format!("{:0>64}", "13ce9000000000000000000000000000000000000000000");
+        println!("{}", BigUint::from_str_radix(target.as_str(), 16).unwrap());
+        println!("{}", target);
+        let hash = block.hash();
+        let hash = hex::encode(hash);
+        let hash = format!("{:0>64}", hash);
+        println!("{}", hash);
+        assert_eq!(block.target(), BigUint::from_str_radix(target.as_str(), 16).unwrap());
+        assert_eq!(block.difficulty(), BigUint::from(888171856257u64));
+    }
+    #[test]
+    fn test_check_pow() {
+        let block_raw = hex::decode("04000000fbedbbf0cfdaf278c094f187f2eb987c86a199da22bbb20400000000000000007b7697b29129648fa08b4bcd13c9d5e60abb973a1efac9c8d573c71c807c56c3d6213557faa80518c3737ec1").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let block = Block::parse(&mut cursor).unwrap();
+        assert!(block.check_pow());
+        let block_raw = hex::decode("04000000fbedbbf0cfdaf278c094f187f2eb987c86a199da22bbb20400000000000000007b7697b29129648fa08b4bcd13c9d5e60abb973a1efac9c8d573c71c807c56c3d6213557faa80518c3737ec0").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let block = Block::parse(&mut cursor).unwrap();
+        assert!(!block.check_pow());
+    }
+    #[test]
+    fn test_target_to_bits() {
+        let block_raw = hex::decode("04000000fbedbbf0cfdaf278c094f187f2eb987c86a199da22bbb20400000000000000007b7697b29129648fa08b4bcd13c9d5e60abb973a1efac9c8d573c71c807c56c3d6213557faa80518c3737ec1").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let block = Block::parse(&mut cursor).unwrap();
+
+        println!("{:?}", &block.bits);
+        println!("{:?}", hex::encode(&block.bits));
+        println!("{:?}", &block.target());
+        println!("{:?}", bits_to_target(&block.bits));
+        let res = target_to_bits(&block.target());
+        println!("{:?}", res);
+        println!("{:?}", hex::encode(&res));
+        println!("{:?}", bits_to_target(&target_to_bits(&block.target())));
     }
 }
