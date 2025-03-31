@@ -113,7 +113,8 @@ impl Block {
 mod tests {
     use super::*;
     use num::Num;
-    use crate::helpers::block_bits::target_to_bits;
+    use num::traits::Euclid;
+    use crate::helpers::block_bits::{calculate_new_bits, target_to_bits, TWO_WEEKS};
 
     #[test]
     fn test_parse_block() {
@@ -223,7 +224,7 @@ mod tests {
     }
     #[test]
     fn test_target_to_bits() {
-        let block_raw = hex::decode("04000000fbedbbf0cfdaf278c094f187f2eb987c86a199da22bbb20400000000000000007b7697b29129648fa08b4bcd13c9d5e60abb973a1efac9c8d573c71c807c56c3d6213557faa80518c3737ec1").unwrap();
+        let block_raw = hex::decode("02000020f1472d9db4b563c35f97c428ac903f23b7fc055d1cfc26000000000000000000b3f449fcbe1bc4cfbcb8283a0d2c037f961a3fdf2b8bedc144973735eea707e1264258597e8b0118e5f00474").unwrap();
         let mut cursor = Cursor::new(block_raw.clone());
         let block = Block::parse(&mut cursor).unwrap();
 
@@ -235,5 +236,36 @@ mod tests {
         println!("{:?}", res);
         println!("{:?}", hex::encode(&res));
         println!("{:?}", bits_to_target(&target_to_bits(&block.target())));
+    }
+    #[test]
+    fn test_new_bits() {
+        let block_raw = hex::decode("000000203471101bbda3fe307664b3283a9ef0e97d9a38a7eacd8800000000000000000010c8aba8479bbaa5e0848152fd3c2289ca50e1c3e58c9a4faaafbdf5803c5448ddb845597e8b0118e43a81d3").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let block1 = Block::parse(&mut cursor).unwrap();
+        let block_raw = hex::decode("02000020f1472d9db4b563c35f97c428ac903f23b7fc055d1cfc26000000000000000000b3f449fcbe1bc4cfbcb8283a0d2c037f961a3fdf2b8bedc144973735eea707e1264258597e8b0118e5f00474").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let block2 = Block::parse(&mut cursor).unwrap();
+        let mut time_diff = block2.timestamp - block1.timestamp;
+        assert_eq!(time_diff, 1214793);
+        if time_diff > TWO_WEEKS * 4 {
+            time_diff = TWO_WEEKS * 4
+        }
+        if time_diff < TWO_WEEKS.div_euclid(4) {
+            time_diff = TWO_WEEKS.div_euclid(4);
+        }
+        println!("{:?}", block1.target());
+        let new_target = (block1.target() * time_diff).div_euclid(&(BigUint::from(TWO_WEEKS)));
+        println!("{:?}", &new_target);
+        let bits = target_to_bits(&new_target);
+        println!("{:?}", &bits);
+        assert_eq!(hex::encode(bits),"308d0118")
+    }
+    #[test]
+
+    pub fn test_calculate_new_bits() {
+        let prev_bits = hex::decode("54d80118").unwrap();
+        let time_differential = 302400u32;
+        let want = hex::decode("00157617").unwrap();
+        assert_eq!(calculate_new_bits(prev_bits, time_differential), want);
     }
 }
