@@ -1,5 +1,6 @@
 use std::fmt;
-use crate::tx::Tx;
+use std::fmt::Error;
+use std::io::{Cursor, ErrorKind, Read};
 
 pub const NETWORK_MAGIC: &[u8; 4] = b"\xf9\xbe\xb4\xd9";
 pub const TESTNET_NETWORK_MAGIC: &[u8; 4] = b"\x0b\x11\x09\x07";
@@ -18,6 +19,21 @@ impl NetworkEnvelope {
         };
         NetworkEnvelope { command, payload, magic }
     }
+    pub fn parse(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, Error> {
+        // let mut magic = [0; 4];
+        // stream.read(&mut magic)?;
+        // if magic == b"".as_slice() {
+        //     return Err(Error::new(
+        //         ErrorKind::InvalidData,
+        //         "Connection reset!",
+        //     ));
+        // }
+
+        Result::Err(Default::default())
+    }
+
+
+
 }
 impl fmt::Display for NetworkEnvelope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
