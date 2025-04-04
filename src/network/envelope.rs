@@ -1,8 +1,8 @@
 use std::fmt;
 use std::io::{Cursor, ErrorKind, Read};
 use std::io::ErrorKind::InvalidData;
-use num::ToPrimitive;
-use crate::helpers::endianness::{little_endian_to_int};
+use num::{BigUint, ToPrimitive};
+use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::hash256::hash256;
 
 pub const NETWORK_MAGIC: &[u8; 4] = b"\xf9\xbe\xb4\xd9";
@@ -54,13 +54,27 @@ impl NetworkEnvelope {
         let mut checksum = [0; 4];
         stream.read(&mut checksum)?;
 
-        let payload: Vec<u8> = vec![0; payload_length.to_usize().unwrap()];
+        let mut payload: Vec<u8> = vec![0; payload_length.to_usize().unwrap()];
+        stream.read(&mut payload)?;
         let hash = hash256(&payload);
-
         if checksum.as_slice() != (hash[0..4]).iter().as_slice() {
             return Err(std::io::Error::new(InvalidData, "Checksum mismatch!"));
         }
         Ok(NetworkEnvelope::new(command, payload, testnet))
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.extend(&self.magic);
+        let pad = vec![0;12 - self.command.len()];
+        let mut command = Vec::new();
+        command.extend(&self.command);
+        command.extend(&pad);
+        result.extend(&command);
+        result.extend(int_to_little_endian(BigUint::from(self.payload.len()), 4));
+        let hash = hash256(&self.payload);
+        result.extend(hash[0..4].to_vec());
+        result.extend(&self.payload);
+        result
     }
 }
 impl fmt::Display for NetworkEnvelope {
@@ -109,14 +123,23 @@ mod tests {
         assert_eq!(String::from_utf8(envelope.command).unwrap(), String::from("verack"));
         assert_eq!(envelope.payload, b"");
 
-        // self.assertEqual(envelope.command, b'verack')
-        // self.assertEqual(envelope.payload, b'')
-        /*
-        msg = bytes.fromhex('f9beb4d976657273696f6e0000000000650000005f1a69d2721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001')
-        stream = BytesIO(msg)
-        envelope = NetworkEnvelope.parse(stream)
-        self.assertEqual(envelope.command, b'version')
-        self.assertEqual(envelope.payload, msg[24:])
-        */
+        let raw_message = hex::decode("f9beb4d976657273696f6e0000000000650000005f1a69d2721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001").unwrap();
+        let mut stream = Cursor::new(raw_message.clone());
+        let envelope = NetworkEnvelope::parse(&mut stream, false).unwrap();
+        assert_eq!(envelope.command, b"version");
+        let want = &raw_message[24..raw_message.len()];
+        assert_eq!(envelope.payload, want);
+    }
+    #[test]
+    fn test_network_envelope_serialize() {
+        let raw_message = hex::decode("f9beb4d976657261636b000000000000000000005df6e0e2").unwrap();
+        let mut stream = Cursor::new(raw_message.clone());
+        let envelope = NetworkEnvelope::parse(&mut stream, false).unwrap();
+        assert_eq!(envelope.serialize(), raw_message);
+
+        let raw_message = hex::decode("f9beb4d976657273696f6e0000000000650000005f1a69d2721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001").unwrap();
+        let mut stream = Cursor::new(raw_message.clone());
+        let envelope = NetworkEnvelope::parse(&mut stream, false).unwrap();
+        assert_eq!(envelope.serialize(), raw_message);
     }
 }
