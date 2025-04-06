@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io::{Cursor, ErrorKind, Read};
 use std::io::ErrorKind::InvalidData;
+use std::net::TcpStream;
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::hash256::hash256;
@@ -10,7 +11,7 @@ pub const TESTNET_NETWORK_MAGIC: &[u8; 4] = b"\x0b\x11\x09\x07";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NetworkEnvelope {
-    command: Vec<u8>,
+    pub command: Vec<u8>,
     payload: Vec<u8>,
     magic: Vec<u8>
 }
@@ -21,6 +22,46 @@ impl NetworkEnvelope {
             false => NETWORK_MAGIC.to_vec()
         };
         NetworkEnvelope { command, payload, magic }
+    }
+    pub fn parse_tcp(stream: &mut TcpStream, testnet: bool) -> Result<Self, std::io::Error> {
+        let mut magic = [0; 4];
+        stream.read(&mut magic)?;
+        if magic == b"".as_slice() {
+            return Err(std::io::Error::new(
+                ErrorKind::InvalidData,
+                "Connection reset!",
+            ));
+        }
+        let expected_magig = match testnet {
+            true => TESTNET_NETWORK_MAGIC,
+            false => NETWORK_MAGIC
+        };
+        if magic.to_vec() != expected_magig.to_vec() {
+            let res = format!("magic is not right {} vs {}", hex::encode(magic), hex::encode(expected_magig));
+            return Err(std::io::Error::new(InvalidData, res));
+        }
+        let mut buffer: [u8;12] = [0; 12];
+        stream.read(&mut buffer)?;
+        let mut command = buffer
+            .into_iter()
+            .rev()
+            .skip_while(|&byte| byte == 0)
+            .collect::<Vec<_>>();
+        command.reverse();
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let payload_length = little_endian_to_int(&buffer);
+
+        let mut checksum = [0; 4];
+        stream.read(&mut checksum)?;
+
+        let mut payload: Vec<u8> = vec![0; payload_length.to_usize().unwrap()];
+        stream.read(&mut payload)?;
+        let hash = hash256(&payload);
+        if checksum.as_slice() != (hash[0..4]).iter().as_slice() {
+            return Err(std::io::Error::new(InvalidData, "Checksum mismatch!"));
+        }
+        Ok(NetworkEnvelope::new(command, payload, testnet))
     }
     pub fn parse(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
         let mut magic = [0; 4];

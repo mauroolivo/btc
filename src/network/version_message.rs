@@ -5,7 +5,7 @@ use crate::helpers::varint::encode_varint;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct VersionMessage {
-    command: Vec<u8>,
+    pub command: Vec<u8>,
     version: BigUint,
     services: BigUint,
     timestamp: BigUint,
