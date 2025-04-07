@@ -1,7 +1,36 @@
 use std::io::{Cursor, Read, Write};
 use num::{BigUint, ToPrimitive};
+use std::net::TcpStream;
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 
+pub fn read_varint_tcp(stream: &mut TcpStream) -> Result<u64, std::io::Error> {
+    let mut buffer = [0; 1];
+    stream.read(&mut buffer)?;
+    let i = buffer[0];
+
+    match i {
+        // 0xfd > 2 bytes
+        0xfd => {
+            let mut buffer = [0; 2];
+            stream.read(&mut buffer)?;
+            Ok(little_endian_to_int(buffer.as_slice()).to_u64().unwrap())
+        }
+        // 0xfe > 4 bytes
+        0xfe => {
+            let mut buffer = [0; 4];
+            stream.read(&mut buffer)?;
+            Ok(little_endian_to_int(buffer.as_slice()).to_u64().unwrap())
+        }
+        // 0xff 8 bytes
+        0xff => {
+            let mut buffer = [0; 8];
+            stream.read(&mut buffer)?;
+            Ok(little_endian_to_int(buffer.as_slice()).to_u64().unwrap())
+        }
+        // the integer
+        _ => Ok(u64::from(i)),
+    }
+}
 pub fn read_varint(stream: &mut Cursor<Vec<u8>>) -> Result<u64, std::io::Error> {
     let mut buffer = [0; 1];
     stream.read(&mut buffer)?;

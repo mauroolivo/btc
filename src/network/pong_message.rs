@@ -2,7 +2,7 @@ use std::io::{Cursor, Read};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct PongMessage {
-    command: Vec<u8>,
+    pub command: Vec<u8>,
     nonce: Vec<u8>,
 }
 impl PongMessage {

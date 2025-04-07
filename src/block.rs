@@ -5,13 +5,15 @@ use crate::helpers::block_bits::bits_to_target;
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::hash256::hash256;
 use num::Num;
+use std::net::TcpStream;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Block {
     version: u32,
     prev_block: Vec<u8>,
     merkle_root: Vec<u8>,
     timestamp: u32,
-    bits: Vec<u8>,
+    pub bits: Vec<u8>,
     nonce: Vec<u8>
 }
 impl Block {
@@ -19,6 +21,31 @@ impl Block {
         Block {
             version, prev_block, merkle_root, timestamp, bits, nonce
         }
+    }
+    pub fn parse_tcp(stream: &mut TcpStream) -> Result<Self, std::io::Error> {
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let version = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
+        let mut buffer = [0; 32];
+        stream.read(&mut buffer)?;
+        let mut prev_block = buffer.to_vec();
+        prev_block.reverse();
+        let mut buffer = [0; 32];
+        stream.read(&mut buffer)?;
+        let mut merkle_root = buffer.to_vec();
+        merkle_root.reverse();
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let timestamp = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
+
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let bits = buffer.to_vec();
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let nonce = buffer.to_vec();
+
+        Ok(Block::new(version, prev_block, merkle_root, timestamp, bits, nonce))
     }
     pub fn parse(stream: &mut Cursor<Vec<u8>>) -> Result<Self, std::io::Error> {
         let mut buffer = [0; 4];

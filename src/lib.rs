@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod point_scalar;
 pub mod field_element;
 pub mod point;

@@ -12,7 +12,7 @@ pub const TESTNET_NETWORK_MAGIC: &[u8; 4] = b"\x0b\x11\x09\x07";
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NetworkEnvelope {
     pub command: Vec<u8>,
-    payload: Vec<u8>,
+    pub payload: Vec<u8>,
     magic: Vec<u8>
 }
 impl NetworkEnvelope {
@@ -56,7 +56,8 @@ impl NetworkEnvelope {
         stream.read(&mut checksum)?;
 
         let mut payload: Vec<u8> = vec![0; payload_length.to_usize().unwrap()];
-        stream.read(&mut payload)?;
+        stream.read_exact(&mut payload)?;
+
         let hash = hash256(&payload);
         if checksum.as_slice() != (hash[0..4]).iter().as_slice() {
             return Err(std::io::Error::new(InvalidData, "Checksum mismatch!"));
