@@ -6,6 +6,7 @@ use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::hash256::hash256;
 use num::Num;
 use std::net::TcpStream;
+use crate::helpers::merkle_hash::merkle_root;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Block {
@@ -14,12 +15,13 @@ pub struct Block {
     merkle_root: Vec<u8>,
     timestamp: u32,
     pub bits: Vec<u8>,
-    nonce: Vec<u8>
+    nonce: Vec<u8>,
+    pub tx_hashes: Vec<Vec<u8>>
 }
 impl Block {
     pub fn new(version: u32, prev_block: Vec<u8>, merkle_root: Vec<u8>, timestamp: u32, bits: Vec<u8>, nonce: Vec<u8>) -> Self {
         Block {
-            version, prev_block, merkle_root, timestamp, bits, nonce
+            version, prev_block, merkle_root, timestamp, bits, nonce, tx_hashes: Vec::new()
         }
     }
     pub fn parse_tcp(stream: &mut TcpStream) -> Result<Self, std::io::Error> {
@@ -134,6 +136,16 @@ impl Block {
     pub fn check_pow(&self) -> bool {
         let proof = little_endian_to_int(&hash256(self.serialize().as_slice()));
         proof < self.target()
+    }
+    pub fn validate_merkle_root(&mut self) -> bool {
+        let mut hashes = Vec::new();
+        for h in self.tx_hashes.iter_mut() {
+            h.reverse();
+            hashes.push(h.clone());
+        }
+        let mut root = merkle_root(hashes);
+        root.reverse();
+        root == self.merkle_root
     }
 }
 #[cfg(test)]
@@ -288,11 +300,36 @@ mod tests {
         assert_eq!(hex::encode(bits),"308d0118")
     }
     #[test]
-
     pub fn test_calculate_new_bits() {
         let prev_bits = hex::decode("54d80118").unwrap();
         let time_differential = 302400u32;
         let want = hex::decode("00157617").unwrap();
         assert_eq!(calculate_new_bits(prev_bits, time_differential), want);
+    }
+    #[test]
+    fn test_validate_merkle_root() {
+        let hashes_hex = [
+            "f54cb69e5dc1bd38ee6901e4ec2007a5030e14bdd60afb4d2f3428c88eea17c1",
+            "c57c2d678da0a7ee8cfa058f1cf49bfcb00ae21eda966640e312b464414731c1",
+            "b027077c94668a84a5d0e72ac0020bae3838cb7f9ee3fa4e81d1eecf6eda91f3",
+            "8131a1b8ec3a815b4800b43dff6c6963c75193c4190ec946b93245a9928a233d",
+            "ae7d63ffcb3ae2bc0681eca0df10dda3ca36dedb9dbf49e33c5fbe33262f0910",
+            "61a14b1bbdcdda8a22e61036839e8b110913832efd4b086948a6a64fd5b3377d",
+            "fc7051c8b536ac87344c5497595d5d2ffdaba471c73fae15fe9228547ea71881",
+            "77386a46e26f69b3cd435aa4faac932027f58d0b7252e62fb6c9c2489887f6df",
+            "59cbc055ccd26a2c4c4df2770382c7fea135c56d9e75d3f758ac465f74c025b8",
+            "7c2bf5687f19785a61be9f46e031ba041c7f93e2b7e9212799d84ba052395195",
+            "08598eebd94c18b0d59ac921e9ba99e2b8ab7d9fccde7d44f2bd4d5e2e726d2e",
+            "f0bb99ef46b029dd6f714e4b12a7d796258c48fee57324ebdc0bbc4700753ab1",
+        ];
+        let mut hashes: Vec<Vec<u8>> = vec![];
+        for h in hashes_hex {
+            hashes.push(hex::decode(h).unwrap());
+        }
+        let block_raw = hex::decode("00000020fcb19f7895db08cadc9573e7915e3919fb76d59868a51d995201000000000000acbcab8bcc1af95d8d563b77d24c3d19b18f1486383d75a5085c4e86c86beed691cfa85916ca061a00000000").unwrap();
+        let mut cursor = Cursor::new(block_raw.clone());
+        let mut block = Block::parse(&mut cursor).unwrap();
+        block.tx_hashes = hashes;
+        assert!(block.validate_merkle_root())
     }
 }

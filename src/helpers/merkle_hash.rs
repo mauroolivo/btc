@@ -89,8 +89,7 @@ mod tests {
         for h in hex_hashes {
             hashes.push(hex::decode(h).unwrap());
         }
-
-        let want_hex_hash = "acbcab8bcc1af95d8d563b77d24c3d19b18f1486383d75a5085c4te86c86beed6";
+        let want_hex_hash = "acbcab8bcc1af95d8d563b77d24c3d19b18f1486383d75a5085c4e86c86beed6";
         let want_hash = hex::decode(want_hex_hash).unwrap();
         assert_eq!(merkle_root(hashes), want_hash);
     }
