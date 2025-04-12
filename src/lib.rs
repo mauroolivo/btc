@@ -15,3 +15,4 @@ pub mod tx_fetcher;
 pub mod block;
 pub mod network;
 pub mod merkle_tree;
+pub mod merkle_block;

@@ -26,6 +26,16 @@ pub fn merkle_root(hashes: Vec<Vec<u8>>) -> Vec<u8> {
     let root =  current_level[0].clone();
     root
 }
+pub fn bytes_to_bit_field(bytes: Vec<u8>) -> Vec<u8> {
+    let mut flag_bits: Vec<u8> = vec![];
+    for mut byte in bytes {
+        for _i in 0..8 {
+            flag_bits.push(byte & 1);
+            byte >>= 1;
+        }
+    }
+    flag_bits
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,5 +102,13 @@ mod tests {
         let want_hex_hash = "acbcab8bcc1af95d8d563b77d24c3d19b18f1486383d75a5085c4e86c86beed6";
         let want_hash = hex::decode(want_hex_hash).unwrap();
         assert_eq!(merkle_root(hashes), want_hash);
+    }
+    #[test]
+    fn test_bytes_to_bit_field() {
+        let raw_bytes = hex::decode("b55635").unwrap();
+        let flag_bits = bytes_to_bit_field(raw_bytes.clone());
+        println!("{:?}", flag_bits);
+        let want: Vec<u8> = vec![1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0];
+        assert_eq!(flag_bits, want);
     }
 }
