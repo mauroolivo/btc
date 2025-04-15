@@ -1,3 +1,4 @@
+use num::integer::div_floor;
 use crate::helpers::hash256::hash256;
 pub fn merkle_parent(hash1: Vec<u8>, hash2: Vec<u8>) -> Vec<u8> {
     let mut sum: Vec<u8> = vec![];
@@ -36,6 +37,20 @@ pub fn bytes_to_bit_field(bytes: Vec<u8>) -> Vec<u8> {
     }
     flag_bits
 }
+pub fn bit_field_to_bytes(bit_field: Vec<u8>) -> Vec<u8> {
+    if bit_field.len() % 8 != 0 {
+        println!("Bit length {} is not a multiple of 8", bit_field.len());
+    }
+    let mut result: Vec<u8> = vec![0; div_floor(bit_field.len(), 8)];
+    for (i, bit) in bit_field.iter().enumerate() {
+        let (byte_index, bit_index) = (i / 8, i % 8);
+        if bit.clone() == 1 {
+            result[byte_index] |= 1 << bit_index;
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,5 +125,13 @@ mod tests {
         println!("{:?}", flag_bits);
         let want: Vec<u8> = vec![1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0];
         assert_eq!(flag_bits, want);
+    }
+    #[test]
+    fn test_bit_field_to_bytes() {
+        let bit_field: Vec<u8> = vec![0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
+        let want = "4000600a080000010940";
+        let h = hex::encode(bit_field_to_bytes(bit_field.clone()));
+        assert_eq!(h, want);
+        assert_eq!(bytes_to_bit_field(hex::decode(want).unwrap()), bit_field);
     }
 }

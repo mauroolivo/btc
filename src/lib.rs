@@ -16,3 +16,4 @@ pub mod block;
 pub mod network;
 pub mod merkle_tree;
 pub mod merkle_block;
+pub mod bloom_filter;

@@ -8,4 +8,3 @@ pub mod sig_hash;
 pub mod address;
 pub mod block_bits;
 pub mod merkle_hash;
-mod bloom;
