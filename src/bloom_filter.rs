@@ -1,3 +1,5 @@
+use num::ToPrimitive;
+
 static BIP37_CONSTANT: u32 = 0xfba4c795;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -11,6 +13,14 @@ impl BloomFilter {
     pub fn new(size: u32, function_count: u32, tweak: u32) -> Self {
         let bit_field = vec![0; size as usize * 8];
         BloomFilter {size, bit_field, function_count, tweak }
+    }
+    pub fn add(&mut self, item: &str) {
+        for i in 0..self.function_count {
+            let seed = i as u128 * BIP37_CONSTANT as u128 + self.tweak as u128;
+            let h = murmur3::murmur3_32(&mut item.as_bytes(), seed as u32);
+            let bit = h.unwrap() % (self.size * 8) as u32;
+            self.bit_field[bit.to_usize().unwrap()] = 1;
+        }
     }
 }
 #[cfg(test)]
@@ -120,5 +130,18 @@ mod tests {
         }
         println!("{:?}", bf.bit_field);
         println!("{:?}", hex::encode(bit_field_to_bytes(bf.bit_field)));
+    }
+    #[test]
+    fn test_bloom_add() {
+        let mut bf = BloomFilter::new(10, 5, 99);
+        let item = "Hello World";
+        bf.add(item);
+        let expected = "0000000a080000000140";
+        assert_eq!(expected, hex::encode(bit_field_to_bytes(bf.bit_field.clone())));
+
+        let item = "Goodbye!";
+        bf.add(item);
+        let expected = "4000600a080000010940";
+        assert_eq!(expected, hex::encode(bit_field_to_bytes(bf.bit_field)));
     }
 }
