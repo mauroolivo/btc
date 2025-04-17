@@ -1,4 +1,8 @@
-use num::ToPrimitive;
+use num::{BigUint, ToPrimitive};
+use crate::helpers::endianness::int_to_little_endian;
+use crate::helpers::merkle_hash::bit_field_to_bytes;
+use crate::helpers::varint::encode_varint;
+use crate::network::generic_message::GenericMessage;
 
 static BIP37_CONSTANT: u32 = 0xfba4c795;
 
@@ -21,6 +25,15 @@ impl BloomFilter {
             let bit = h.unwrap() % (self.size * 8) as u32;
             self.bit_field[bit.to_usize().unwrap()] = 1;
         }
+    }
+    pub fn filter_load(& self, flag: u8) -> GenericMessage {
+        let mut result: Vec<u8> = vec![];
+        result.extend(encode_varint(self.size as u64).unwrap());
+        result.extend(bit_field_to_bytes(self.bit_field.clone()));
+        result.extend(int_to_little_endian(BigUint::from(self.function_count), 4));
+        result.extend(int_to_little_endian(BigUint::from(self.tweak), 4));
+        result.extend(int_to_little_endian(BigUint::from(flag), 1));
+        GenericMessage::new(b"filterload".to_vec(), result)
     }
 }
 #[cfg(test)]
@@ -144,4 +157,15 @@ mod tests {
         let expected = "4000600a080000010940";
         assert_eq!(expected, hex::encode(bit_field_to_bytes(bf.bit_field)));
     }
+    #[test]
+    fn test_bloom_filter_load() {
+        let mut bf = BloomFilter::new(10, 5, 99);
+        let item = "Hello World";
+        bf.add(item);
+        let item = "Goodbye!";
+        bf.add(item);
+        let expected = "0a4000600a080000010940050000006300000001";
+        assert_eq!(expected, hex::encode(bf.filter_load(1).serialize()));
+    }
+    
 }
