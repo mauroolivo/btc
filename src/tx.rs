@@ -1,4 +1,5 @@
 use std::{fmt, io::{Cursor, Read}};
+use std::io::{Seek, SeekFrom};
 use num::{BigUint, ToPrimitive};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::tx_input::TxInput;
@@ -16,16 +17,18 @@ pub struct Tx {
     outputs: Vec<TxOutput>,
     locktime: u32,
     testnet: bool,
+    segwit: bool,
 }
 
 impl Tx {
-    pub fn new(version: u32, inputs: Vec<TxInput>, outputs: Vec<TxOutput>, locktime: u32, testnet: bool) -> Self {
+    pub fn new(version: u32, inputs: Vec<TxInput>, outputs: Vec<TxOutput>, locktime: u32, testnet: bool, segwit: bool) -> Self {
         Tx {
             version: version,
             inputs: inputs,
             outputs: outputs,
             locktime: locktime,
             testnet: testnet,
+            segwit: segwit,
         }
     }
     pub fn version(&self) -> u32 {
@@ -41,6 +44,68 @@ impl Tx {
         self.locktime
     }
     pub fn parse(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let mut buffer = [0; 1];
+        stream.read(&mut buffer)?;
+        stream.seek(SeekFrom::Start(0))?;
+        if buffer[0] == 0x00 { // segwit marker
+            Self::parse_segwit(stream, testnet)
+        } else {
+            Self::parse_legacy(stream, testnet)
+        }
+    }
+    fn parse_segwit(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer)?;
+        let version = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
+        let mut buffer = [0; 2];
+        stream.read(&mut buffer)?;
+        if buffer != [0x00,0x01] { // segwit marker
+            panic!("invalid segwit marker");
+        }
+
+        let mut inputs: Vec<TxInput> = Vec::new();
+        let mut outputs: Vec<TxOutput> = Vec::new();
+
+        if let Ok(num_inputs) = read_varint(stream) {
+            for _ in 0..num_inputs {
+                inputs.push(TxInput::parse(stream).unwrap());
+            }
+        }
+        //let mut outputs = vec![];
+        if let Ok(num_outputs) = read_varint(stream) {
+            for _ in 0..num_outputs {
+                outputs.push(TxOutput::parse(stream).unwrap());
+            }
+        }
+
+
+        // for tx_in in inputs:  # <2>
+        //     num_items = read_varint(s)
+        // items = []
+        // for _ in range(num_items):
+        //     item_len = read_varint(s)
+        // if item_len == 0:
+        //     items.append(0)
+        // else:
+        // items.append(s.read(item_len))
+        // tx_in.witness = items
+
+        let mut buffer = vec![0; 4];
+        stream.read(&mut buffer).unwrap();
+        let locktime = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
+
+        Ok(Tx {
+            version,
+            inputs,
+            outputs,
+            locktime,
+            testnet,
+            segwit: true,
+        })
+    }
+    fn parse_legacy(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
         let mut buffer = [0; 4];
         stream.read(&mut buffer)?;
         let version = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
@@ -70,6 +135,7 @@ impl Tx {
             outputs,
             locktime,
             testnet,
+            segwit: false,
         })
     }
     pub fn serialize(&self) -> Vec<u8> {
@@ -385,7 +451,7 @@ mod tests {
         let change_script = Script::p2pkh_script(change_h160);
         let change_output = TxOutput::new(change_amount, change_script);
 
-        let tx = Tx::new(1u32, vec![tx_in], vec![change_output, target_output], 0u32, true);
+        let tx = Tx::new(1u32, vec![tx_in], vec![change_output, target_output], 0u32, true, false);
         println!("{}", tx);
     }
     #[test]
@@ -412,7 +478,7 @@ mod tests {
 
         let tx_in = tx.tx_ins()[0].clone();
         let tx_in_update = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), script_sig, tx_in.sequence());
-        let tx = Tx::new(tx.version(), vec![tx_in_update], tx.tx_outs(), tx.locktime, tx.testnet);
+        let tx = Tx::new(tx.version(), vec![tx_in_update], tx.tx_outs(), tx.locktime, tx.testnet, tx.segwit);
         println!("{}", tx);
         println!("{:?}", hex::encode(tx.serialize()));
     }
@@ -494,5 +560,21 @@ mod tests {
         let mut stream = Cursor::new(raw_tx);
         let tx = Tx::parse(&mut stream, false).unwrap();
         assert!(tx.coinbase_height().is_none());
+    }
+    #[test]
+    fn test_segwit_parse_1() {
+        // tx_id 39cc1562b197182429bc1ea312c9e30f1257be6d5159fcd7b375139d3c3fe63c
+        let raw_tx = hex::decode("020000000001011c20e4848e7992a8c23deff629105174d36286234429b4f6878a52a14c87931a0100000000fdffffff02cf21180000000000160014853ec3166860371ee67b7754ff85e13d7a0d669850330500000000001976a914fc71e34a661ea03b46b4e2414dac463d3328e12188ac02473044022007b6e8bb9f1cc0e3526ae158cfbd663debf56826249c3439f8967a0a7dd4244a022004dac7a6d79f37283ca739b2ec4ed502ec208eb05287fdc2a2a6df1ca83c10d0012103e5e444515d5566e7def1332d7dded8755ed9a2f1c8c968a3de1e72369a2ae7603d600a00").unwrap();
+        let mut stream = Cursor::new(raw_tx);
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        println!("{:?}", tx);
+    }
+    #[test]
+    fn test_segwit_parse_2() {
+        // tx_id d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c
+        let raw_tx = hex::decode("0100000000010115e180dc28a2327e687facc33f10f2a20da717e5548406f7ae8b4c811072f8560100000000ffffffff0100b4f505000000001976a9141d7cd6c75c2e86f4cbf98eaed221b30bd9a0b92888ac02483045022100df7b7e5cda14ddf91290e02ea10786e03eb11ee36ec02dd862fe9a326bbcb7fd02203f5b4496b667e6e281cc654a2da9e4f08660c620a1051337fa8965f727eb19190121038262a6c6cec93c2d3ecd6c6072efea86d02ff8e3328bbd0242b20af3425990ac00000000").unwrap();
+        let mut stream = Cursor::new(raw_tx);
+        let tx = Tx::parse(&mut stream, true).unwrap();
+        println!("{:?}", tx);
     }
 }
