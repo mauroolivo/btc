@@ -11,6 +11,7 @@ pub struct TxInput {
     prev_index: u32,
     pub script_sig: Script,
     sequence: u32,
+    pub witness: Option<Vec<Vec<u8>>>,
 }
 impl TxInput {
     pub fn new(prev_tx: Vec<u8>, prev_index: u32, script_sig: Script, sequence: u32) -> Self {
@@ -18,7 +19,8 @@ impl TxInput {
             prev_tx: prev_tx,
             prev_index: prev_index,
             script_sig: script_sig,
-            sequence: sequence
+            sequence: sequence,
+            witness: None,
         }
     }
     pub fn parse(stream: &mut Cursor<Vec<u8>>) -> Result<Self, Error> {
@@ -41,6 +43,7 @@ impl TxInput {
             prev_tx,
             prev_index,
             script_sig: script_sig,
+            witness: None,
             sequence,
         })
     }

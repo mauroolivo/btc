@@ -79,18 +79,24 @@ impl Tx {
                 outputs.push(TxOutput::parse(stream).unwrap());
             }
         }
+        for tx_in in inputs.iter_mut() {
+            if let Ok(num_items) = read_varint(stream) {
 
-
-        // for tx_in in inputs:  # <2>
-        //     num_items = read_varint(s)
-        // items = []
-        // for _ in range(num_items):
-        //     item_len = read_varint(s)
-        // if item_len == 0:
-        //     items.append(0)
-        // else:
-        // items.append(s.read(item_len))
-        // tx_in.witness = items
+                let mut items: Vec<Vec<u8>> = vec![];
+                for _ in 0..num_items {
+                    if let Ok(item_len) = read_varint(stream) {
+                        if item_len == 0 {
+                            items.push(vec![0])
+                        } else {
+                            let mut buffer: Vec<u8> = vec![0;item_len as usize];
+                            stream.read(&mut buffer)?;
+                            items.push(buffer)
+                        }
+                    }
+                }
+                tx_in.witness = Some(items);
+            }
+        }
 
         let mut buffer = vec![0; 4];
         stream.read(&mut buffer).unwrap();
