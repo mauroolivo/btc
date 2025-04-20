@@ -145,6 +145,44 @@ impl Tx {
         })
     }
     pub fn serialize(&self) -> Vec<u8> {
+        if self.segwit {
+            self.serialize_segwit()
+        } else {
+            self.serialize_legacy()
+        }
+    }
+    pub fn serialize_segwit(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.extend(int_to_little_endian(BigUint::from(self.version), 4));
+        result.extend(vec![0x00, 0x01]);
+        result.extend(encode_varint(self.inputs.len() as u64).unwrap());
+        for tx_in in self.tx_ins() {
+            result.extend(tx_in.serialize());
+        }
+        result.extend(encode_varint(self.outputs.len() as u64).unwrap());
+        for tx_out in self.tx_outs() {
+            result.extend(tx_out.serialize());
+        }
+        for tx_in in self.tx_ins() {
+            match tx_in.witness {
+                Some(witness) => {
+                    result.extend(int_to_little_endian(BigUint::from(witness.len()), 1));
+                    for item in witness {
+                        if item.len() == 1 {
+                            result.extend(int_to_little_endian(BigUint::from(item[0]), 1))
+                        } else {
+                            result.extend(encode_varint(item.len() as u64).unwrap());
+                            result.extend(item);
+                        }
+                    }
+                }
+                None => {}
+            }
+        }
+        result.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
+        result
+    }
+    pub fn serialize_legacy(&self) -> Vec<u8> {
         let mut result = Vec::new();
         result.extend(int_to_little_endian(BigUint::from(self.version), 4));
         result.extend(encode_varint(self.inputs.len() as u64).unwrap());
@@ -162,7 +200,7 @@ impl Tx {
         hex::encode(self.hash())
     }
     fn hash(&self) -> Vec<u8> {
-        let bytes = self.serialize();
+        let bytes = self.serialize_legacy();
         let mut hash = hash256(&bytes);
         hash.reverse();
         hash.to_vec()
@@ -582,5 +620,22 @@ mod tests {
         let mut stream = Cursor::new(raw_tx);
         let tx = Tx::parse(&mut stream, true).unwrap();
         println!("{:?}", tx);
+    }
+    #[test]
+    fn test_segwit_serialize_1() {
+        let raw_tx = hex::decode("020000000001011c20e4848e7992a8c23deff629105174d36286234429b4f6878a52a14c87931a0100000000fdffffff02cf21180000000000160014853ec3166860371ee67b7754ff85e13d7a0d669850330500000000001976a914fc71e34a661ea03b46b4e2414dac463d3328e12188ac02473044022007b6e8bb9f1cc0e3526ae158cfbd663debf56826249c3439f8967a0a7dd4244a022004dac7a6d79f37283ca739b2ec4ed502ec208eb05287fdc2a2a6df1ca83c10d0012103e5e444515d5566e7def1332d7dded8755ed9a2f1c8c968a3de1e72369a2ae7603d600a00").unwrap();
+        let mut stream = Cursor::new(raw_tx.clone());
+        let tx = Tx::parse(&mut stream, true).unwrap();
+        let ser = tx.serialize();
+        assert_eq!(raw_tx, ser);
+    }
+    #[test]
+    fn test_segwit_serialize_2() {
+        let raw_tx = hex::decode("0100000000010115e180dc28a2327e687facc33f10f2a20da717e5548406f7ae8b4c811072f8560100000000ffffffff0100b4f505000000001976a9141d7cd6c75c2e86f4cbf98eaed221b30bd9a0b92888ac02483045022100df7b7e5cda14ddf91290e02ea10786e03eb11ee36ec02dd862fe9a326bbcb7fd02203f5b4496b667e6e281cc654a2da9e4f08660c620a1051337fa8965f727eb19190121038262a6c6cec93c2d3ecd6c6072efea86d02ff8e3328bbd0242b20af3425990ac00000000").unwrap();
+        let mut stream = Cursor::new(raw_tx.clone());
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        println!("{}", tx.id());
+        let ser = tx.serialize();
+        assert_eq!(raw_tx, ser);
     }
 }
