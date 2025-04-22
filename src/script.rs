@@ -102,7 +102,7 @@ impl Script {
         result.extend(raw_result);
         result
     }
-    pub fn evaluate(&self, z: &BigUint) -> bool {
+    pub fn evaluate(&self, z: &BigUint, witness: &Option<Vec<Vec<u8>>>) -> bool {
         let mut cmds = self.cmds.clone();
         let mut stack: Vec<Vec<u8>> = vec![];
         let mut altstack: Vec<Vec<u8>> = vec![];
@@ -251,6 +251,12 @@ impl Script {
     }
     pub fn is_p2sh_script_pubkey(&self) -> bool {
         self.cmds.len() == 3 && self.cmds[0] == [0xa9] && self.cmds[1].len() == 20 && self.cmds[2] == [0x87]
+    }
+    pub fn is_p2wpkh_script_pubkey(&self) -> bool {
+        self.cmds.len() == 2 && self.cmds[0] == [0x00] && self.cmds[1].len() == 20
+    }
+    pub fn is_p2wsh_script_pubkey(&self) -> bool {
+        self.cmds.len() == 2 && self.cmds[0] == [0x00] && self.cmds[1].len() == 32
     }
 }
 impl Add for Script {
@@ -424,7 +430,7 @@ mod tests {
 
         let combined_script =  script_sig + script_pubkey;
         println!("COMBINED: {}", combined_script);
-        let eval = combined_script.evaluate(&BigUint::from(0u32));
+        let eval = combined_script.evaluate(&BigUint::from(0u32), &None);
         println!("EVAL: {:?}", eval);
         assert_eq!(eval, true);
     }
@@ -450,7 +456,7 @@ mod tests {
 
         let combined_script =  script_sig + script_pubkey;
         println!("COMBINED: {}", combined_script);
-        let eval = combined_script.evaluate(&BigUint::from(0u32));
+        let eval = combined_script.evaluate(&BigUint::from(0u32), &None);
         println!("EVAL: {:?}", eval);
         assert_eq!(eval, true);
     }
@@ -474,7 +480,7 @@ mod tests {
 
         let combined_script =  script_sig + script_pubkey;
         println!("COMBINED: {}", combined_script);
-        let eval = combined_script.evaluate(&z);
+        let eval = combined_script.evaluate(&z, &None);
         println!("EVAL: {:?}", eval);
         assert_eq!(eval, true);
     }

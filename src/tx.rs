@@ -1,6 +1,6 @@
 use std::{fmt, io::{Cursor, Read}};
 use std::io::{Seek, SeekFrom};
-use num::{BigUint, ToPrimitive};
+use num::{BigUint, ToPrimitive, Zero};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::tx_input::TxInput;
 use crate::tx_output::TxOutput;
@@ -18,6 +18,9 @@ pub struct Tx {
     locktime: u32,
     testnet: bool,
     segwit: bool,
+    hash_prevouts: Option<Vec<u8>>,
+    hash_sequence: Option<Vec<u8>>,
+    hash_outputs: Option<Vec<u8>>,
 }
 
 impl Tx {
@@ -29,6 +32,9 @@ impl Tx {
             locktime: locktime,
             testnet: testnet,
             segwit: segwit,
+            hash_prevouts: None,
+            hash_sequence: None,
+            hash_outputs: None,
         }
     }
     pub fn version(&self) -> u32 {
@@ -109,6 +115,9 @@ impl Tx {
             locktime,
             testnet,
             segwit: true,
+            hash_prevouts: None,
+            hash_sequence: None,
+            hash_outputs: None,
         })
     }
     fn parse_legacy(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
@@ -142,6 +151,9 @@ impl Tx {
             locktime,
             testnet,
             segwit: false,
+            hash_prevouts: None,
+            hash_sequence: None,
+            hash_outputs: None,
         })
     }
     pub fn serialize(&self) -> Vec<u8> {
@@ -199,6 +211,38 @@ impl Tx {
     pub fn id(&self) -> String {
         hex::encode(self.hash())
     }
+    pub fn hash_prevouts(&mut self) -> Option<Vec<u8>> {
+        let mut all_prevouts: Vec<u8> = vec![];
+        let mut all_sequence: Vec<u8> = vec![];
+        if self.hash_prevouts.is_none() {
+            for tx_in in self.tx_ins() {
+                let mut p_outs = tx_in.prev_tx().clone();
+                p_outs.reverse();
+                all_prevouts.extend(p_outs);
+                all_sequence.extend(int_to_little_endian(BigUint::from(tx_in.prev_index()), 4));
+                all_sequence.extend(int_to_little_endian(BigUint::from(tx_in.sequence()), 4));
+            }
+            self.hash_prevouts = Some(hash256(all_prevouts.as_slice()).to_vec());
+            self.hash_sequence = Some(hash256(all_sequence.as_slice()).to_vec());
+        }
+        self.hash_prevouts.clone()
+    }
+    pub fn hash_sequence(&mut self) -> Option<Vec<u8>> {
+        if self.hash_prevouts.is_none() {
+            self.hash_prevouts();
+        }
+        self.hash_sequence.clone()
+    }
+    pub fn hash_outputs(&mut self) -> Option<Vec<u8>> {
+        let mut all_outputs: Vec<u8> = vec![];
+        if self.hash_outputs.is_none() {
+            for tx_out in self.tx_outs() {
+                all_outputs.extend(tx_out.serialize());
+            }
+            self.hash_outputs = Some(hash256(all_outputs.as_slice()).to_vec());
+        }
+        self.hash_outputs.clone()
+    }
     fn hash(&self) -> Vec<u8> {
         let bytes = self.serialize_legacy();
         let mut hash = hash256(&bytes);
@@ -254,12 +298,52 @@ impl Tx {
         let z = BigUint::from_bytes_be(hash.as_slice());
         z
     }
+    pub fn sig_hash_bip143(&self, input_index: usize, redeem_script: Option<Script>, witness_script: Option<Script>) -> BigUint {
+
+        let tx_in = &self.inputs[input_index];
+        let mut s: Vec<u8> = Vec::new();
+        // per BIP143 spec
+        s.extend(int_to_little_endian(BigUint::from(self.version), 4));
+
+//        s.extend(self.hash_prevouts().unwrap());
+//        s.extend(self.hash_sequence().unwrap());
+
+        let mut prev = tx_in.prev_tx();
+        prev.reverse();
+        s.extend(prev);
+        s.extend(int_to_little_endian(BigUint::from(tx_in.prev_index()), 4));
+
+        let mut script_code = vec![];
+        if witness_script.is_some() {
+                script_code = witness_script.unwrap().serialize()
+        } else if redeem_script.is_some() {
+            let script = redeem_script.unwrap();
+            let h160 = script.cmds[1].clone();
+            script_code = Script::p2pkh_script(h160).serialize();
+        } else {
+            let script = tx_in.script_pubkey(self.testnet);
+            let h160 = script.cmds[1].clone();
+            script_code = Script::p2pkh_script(h160).serialize();
+        }
+        s.extend(script_code.clone());
+        s.extend(int_to_little_endian(BigUint::from(tx_in.value(self.testnet)), 8));
+        s.extend(int_to_little_endian(BigUint::from(tx_in.sequence()), 4));
+        s.extend(self.hash_outputs.clone().unwrap());
+        s.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
+        s.extend(int_to_little_endian(BigUint::from(SIGHASH_ALL), 4));
+        let hash = hash256(s.as_slice());
+        BigUint::from_bytes_be(hash.as_slice())
+    }
+
     pub fn verify_input(&self, input_index: usize) -> bool {
         let tx_ins = self.tx_ins(); //[input_index];
         let tx_in = &tx_ins[input_index];
         let prev_script_pubkey = tx_in.script_pubkey(self.testnet);
 
+        let mut z: BigUint = BigUint::zero();
+        let mut witness: Option<Vec<Vec<u8>>> = None;
         let mut redeem_script: Option<Script> = None;
+
         if prev_script_pubkey.is_p2sh_script_pubkey() {
             // the last cmd in a p2sh is the RedeemScript
             let mut script_sig = tx_in.script_sig.clone();
@@ -271,17 +355,52 @@ impl Tx {
             let mut stream = Cursor::new(raw_redeem);
             match Script::parse(&mut stream) {
                 Ok(script) => {
-                    redeem_script = Some(script);
+                    redeem_script = Some(script.clone());
+
+                    if script.is_p2wpkh_script_pubkey() {
+                        z = self.sig_hash_bip143(input_index, redeem_script.clone(), None);
+                        witness = tx_in.witness.clone();
+                    } else if redeem_script.clone().unwrap().is_p2wsh_script_pubkey() {
+                        let mut raw_witness: Vec<u8> = vec![];
+                        let mut part = tx_in.witness.clone().unwrap();
+                        let cmd: Vec<u8> = part.pop().unwrap();
+                        raw_witness.extend(encode_varint(cmd.len() as u64).unwrap());
+                        raw_witness.extend(cmd);
+                        let mut w_stream = Cursor::new(raw_witness);
+                        let witness_script = Script::parse(&mut w_stream).unwrap();
+                        z = self.sig_hash_bip143(input_index, None, Some(witness_script));
+                        witness = tx_in.clone().witness;
+                    } else {
+                        z = self.sig_hash(input_index, redeem_script.clone());
+                        witness = None;
+                    }
                 }
                 Err(e) => {
                     println!("{:?}", e);
                     panic!("Can't parse redeem script");
                 }
             }
+        } else {
+            if prev_script_pubkey.is_p2wpkh_script_pubkey() {
+                z = self.sig_hash_bip143(input_index, None, None);
+                witness = tx_in.clone().witness
+            } else if prev_script_pubkey.is_p2wsh_script_pubkey() {
+                let mut raw_witness: Vec<u8> = Vec::new();
+                let mut part = tx_in.witness.clone().unwrap();
+                let cmd: Vec<u8> = part.pop().unwrap();
+                raw_witness.extend(encode_varint(cmd.len() as u64).unwrap());
+                raw_witness.extend(cmd);
+                let mut w_stream = Cursor::new(raw_witness);
+                let witness_script = Script::parse(&mut w_stream).unwrap();
+                z = self.sig_hash_bip143(input_index, None, Some(witness_script));
+                witness = tx_in.clone().witness;
+            } else {
+                z = self.sig_hash(input_index, None);
+                witness = None;
+            }
         }
-        let z = self.sig_hash(input_index, redeem_script);
         let combined_script = tx_in.script_sig() + prev_script_pubkey;
-        combined_script.evaluate(&z)
+        combined_script.evaluate(&z.clone(), &witness.clone())
     }
     pub fn verify(&self) -> bool {
         if self.fee() < 0 {
@@ -637,5 +756,22 @@ mod tests {
         println!("{}", tx.id());
         let ser = tx.serialize();
         assert_eq!(raw_tx, ser);
+    }
+    #[test]
+    fn test_verify_p2wpkh() {
+    //     let tx_id = "d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c";
+    //     let testnet = true;
+    //     let tf = TxFetcher::new(testnet);
+    //     let result = tf.fetch_sync(tx_id);
+    //     match result {
+    //         Ok(tx) => {
+    //             println!("{:?}", tx);
+    //             assert_eq!(tx.verify(), true);
+    //         }
+    //         Err(e) => {
+    //             println!("{:?}", e);
+    //             assert!(false);
+    //         }
+    //     }
     }
 }
