@@ -223,6 +223,32 @@ impl Script {
                     let mut cursor = Cursor::new(redeem_script);
                     cmds.extend(Script::parse(&mut cursor).unwrap().cmds);
                 }
+                // witness program version 0 rule. if stack cmds are:
+                // 0 <20 byte hash> this is p2wpkh
+                if stack.len() == 2 && stack[0] == b"" && stack[1].len() == 20 {
+                    // is b"" correct ?
+                    let h160 = stack.pop();
+                    stack.pop();
+                    cmds.extend(witness.clone().unwrap());
+                    cmds.extend(Script::p2pkh_script(h160.unwrap()).cmds);
+
+                }
+                // witness program version 0 rule. if stack cmds are:
+                // 0 <32 byte hash> this is p2wsh
+                if stack.len() == 2 && stack[0] == b"" && stack[1].len() == 32 {
+                    // let s256 = stack.pop();
+                    // stack.pop();
+                    // cmds.extend(witness.clone().unwrap().pop());
+                    // let witness_script = witness.clone().unwrap().pop();
+                    // if s256 != sha2 sha256(witness_script):  # <5>
+                    //     print('bad sha256 {} vs {}'.format
+                    //     (s256.hex(), sha256(witness_script).hex()))
+                    // return False
+                    // stream = BytesIO(encode_varint(len(witness_script))
+                    //     + witness_script)
+                    // witness_script_cmds = Script.parse(stream).cmds  # <6>
+                    // cmds.extend(witness_script_cmds)
+                }
             }
         }
         if stack.len() == 0 {

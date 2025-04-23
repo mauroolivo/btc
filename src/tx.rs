@@ -298,15 +298,18 @@ impl Tx {
         let z = BigUint::from_bytes_be(hash.as_slice());
         z
     }
-    pub fn sig_hash_bip143(&self, input_index: usize, redeem_script: Option<Script>, witness_script: Option<Script>) -> BigUint {
+    pub fn sig_hash_bip143(&mut self, input_index: usize, redeem_script: Option<Script>, witness_script: Option<Script>) -> BigUint {
+
+        let pr = self.hash_prevouts().unwrap();
+        let se = self.hash_sequence().unwrap();
 
         let tx_in = &self.inputs[input_index];
         let mut s: Vec<u8> = Vec::new();
         // per BIP143 spec
         s.extend(int_to_little_endian(BigUint::from(self.version), 4));
 
-//        s.extend(self.hash_prevouts().unwrap());
-//        s.extend(self.hash_sequence().unwrap());
+        s.extend(pr);
+        s.extend(se);
 
         let mut prev = tx_in.prev_tx();
         prev.reverse();
@@ -328,14 +331,14 @@ impl Tx {
         s.extend(script_code.clone());
         s.extend(int_to_little_endian(BigUint::from(tx_in.value(self.testnet)), 8));
         s.extend(int_to_little_endian(BigUint::from(tx_in.sequence()), 4));
-        s.extend(self.hash_outputs.clone().unwrap());
+        s.extend(self.hash_outputs().unwrap());
         s.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
         s.extend(int_to_little_endian(BigUint::from(SIGHASH_ALL), 4));
         let hash = hash256(s.as_slice());
         BigUint::from_bytes_be(hash.as_slice())
     }
 
-    pub fn verify_input(&self, input_index: usize) -> bool {
+    pub fn verify_input(&mut self, input_index: usize) -> bool {
         let tx_ins = self.tx_ins(); //[input_index];
         let tx_in = &tx_ins[input_index];
         let prev_script_pubkey = tx_in.script_pubkey(self.testnet);
@@ -381,9 +384,18 @@ impl Tx {
                 }
             }
         } else {
+
             if prev_script_pubkey.is_p2wpkh_script_pubkey() {
+
                 z = self.sig_hash_bip143(input_index, None, None);
-                witness = tx_in.clone().witness
+                witness = tx_in.clone().witness;
+
+                println!("z: {}", z);
+                let w1 = &witness.clone().unwrap()[0];
+                let w2 = &witness.clone().unwrap()[1];
+                println!("witness 0 : {:?}", hex::encode(w1));
+                println!("witness 1 : {:?}", hex::encode(w2));
+
             } else if prev_script_pubkey.is_p2wsh_script_pubkey() {
                 let mut raw_witness: Vec<u8> = Vec::new();
                 let mut part = tx_in.witness.clone().unwrap();
@@ -402,7 +414,7 @@ impl Tx {
         let combined_script = tx_in.script_sig() + prev_script_pubkey;
         combined_script.evaluate(&z.clone(), &witness.clone())
     }
-    pub fn verify(&self) -> bool {
+    pub fn verify(&mut self) -> bool {
         if self.fee() < 0 {
             println!("----------> fee is negative");
             return false;
@@ -654,7 +666,7 @@ mod tests {
         let tf = TxFetcher::new(testnet);
         let result = tf.fetch_sync(tx_id);
         match result {
-            Ok(tx) => {
+            Ok(mut tx) => {
                 println!("{:?}", tx);
                 assert_eq!(tx.verify(), true);
             }
@@ -688,7 +700,7 @@ mod tests {
         let tf = TxFetcher::new(testnet);
         let result = tf.fetch_sync(tx_id);
         match result {
-            Ok(tx) => {
+            Ok(mut tx) => {
                 println!("{:?}", tx);
                 assert_eq!(tx.verify(), true);
             }
@@ -759,19 +771,36 @@ mod tests {
     }
     #[test]
     fn test_verify_p2wpkh() {
-    //     let tx_id = "d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c";
-    //     let testnet = true;
-    //     let tf = TxFetcher::new(testnet);
-    //     let result = tf.fetch_sync(tx_id);
-    //     match result {
-    //         Ok(tx) => {
-    //             println!("{:?}", tx);
-    //             assert_eq!(tx.verify(), true);
-    //         }
-    //         Err(e) => {
-    //             println!("{:?}", e);
-    //             assert!(false);
-    //         }
-    //     }
+        // let tx_id = "d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c";
+        // let testnet = true;
+        // let tf = TxFetcher::new(testnet);
+        // let result = tf.fetch_sync(tx_id);
+        // match result {
+        //     Ok(mut tx) => {
+        //         println!("{:?}", tx);
+        //         assert_eq!(tx.verify(), true);
+        //     }
+        //     Err(e) => {
+        //         println!("{:?}", e);
+        //         assert!(false);
+        //     }
+        // }
+    }
+    #[test]
+    fn test_verify_p2sh_p2wpkh() {
+        // let tx_id = "c586389e5e4b3acb9d6c8be1c19ae8ab2795397633176f5a6442a261bbdefc3a";
+        // let testnet = false;
+        // let tf = TxFetcher::new(testnet);
+        // let result = tf.fetch_sync(tx_id);
+        // match result {
+        //     Ok(mut tx) => {
+        //         println!("{:?}", tx);
+        //         assert_eq!(tx.verify(), true);
+        //     }
+        //     Err(e) => {
+        //         println!("{:?}", e);
+        //         assert!(false);
+        //     }
+        // }
     }
 }
