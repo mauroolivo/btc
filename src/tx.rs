@@ -1,4 +1,4 @@
-use std::{fmt, io::{Cursor, Read}};
+use std::{fmt, io::{Cursor, Read}, vec};
 use std::io::{Seek, SeekFrom};
 use num::{BigUint, ToPrimitive, Zero};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
@@ -219,7 +219,7 @@ impl Tx {
                 let mut p_outs = tx_in.prev_tx().clone();
                 p_outs.reverse();
                 all_prevouts.extend(p_outs);
-                all_sequence.extend(int_to_little_endian(BigUint::from(tx_in.prev_index()), 4));
+                all_prevouts.extend(int_to_little_endian(BigUint::from(tx_in.prev_index()), 4));
                 all_sequence.extend(int_to_little_endian(BigUint::from(tx_in.sequence()), 4));
             }
             self.hash_prevouts = Some(hash256(all_prevouts.as_slice()).to_vec());
@@ -227,6 +227,9 @@ impl Tx {
         }
         self.hash_prevouts.clone()
     }
+
+
+
     pub fn hash_sequence(&mut self) -> Option<Vec<u8>> {
         if self.hash_prevouts.is_none() {
             self.hash_prevouts();
@@ -308,6 +311,7 @@ impl Tx {
         // per BIP143 spec
         s.extend(int_to_little_endian(BigUint::from(self.version), 4));
 
+        println!("pr: {}", hex::encode(pr.clone()));
         s.extend(pr);
         s.extend(se);
 
@@ -316,7 +320,7 @@ impl Tx {
         s.extend(prev);
         s.extend(int_to_little_endian(BigUint::from(tx_in.prev_index()), 4));
 
-        let mut script_code = vec![];
+        let mut script_code = Vec::new();
         if witness_script.is_some() {
                 script_code = witness_script.unwrap().serialize()
         } else if redeem_script.is_some() {
@@ -334,6 +338,8 @@ impl Tx {
         s.extend(self.hash_outputs().unwrap());
         s.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
         s.extend(int_to_little_endian(BigUint::from(SIGHASH_ALL), 4));
+
+        println!("sc: {:?}", script_code);
         let hash = hash256(s.as_slice());
         BigUint::from_bytes_be(hash.as_slice())
     }
@@ -380,6 +386,7 @@ impl Tx {
                 }
                 Err(e) => {
                     println!("{:?}", e);
+                    println!("{:?} {:?} {:?}", redeem_script, z, witness);
                     panic!("Can't parse redeem script");
                 }
             }
@@ -771,36 +778,20 @@ mod tests {
     }
     #[test]
     fn test_verify_p2wpkh() {
-        // let tx_id = "d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c";
-        // let testnet = true;
-        // let tf = TxFetcher::new(testnet);
-        // let result = tf.fetch_sync(tx_id);
-        // match result {
-        //     Ok(mut tx) => {
-        //         println!("{:?}", tx);
-        //         assert_eq!(tx.verify(), true);
-        //     }
-        //     Err(e) => {
-        //         println!("{:?}", e);
-        //         assert!(false);
-        //     }
-        // }
+        let tx_id = "d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c";
+        let testnet = true;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(mut tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(e) => {
+                println!("{:?}", e);
+                assert!(false);
+            }
+        }
     }
-    #[test]
-    fn test_verify_p2sh_p2wpkh() {
-        // let tx_id = "c586389e5e4b3acb9d6c8be1c19ae8ab2795397633176f5a6442a261bbdefc3a";
-        // let testnet = false;
-        // let tf = TxFetcher::new(testnet);
-        // let result = tf.fetch_sync(tx_id);
-        // match result {
-        //     Ok(mut tx) => {
-        //         println!("{:?}", tx);
-        //         assert_eq!(tx.verify(), true);
-        //     }
-        //     Err(e) => {
-        //         println!("{:?}", e);
-        //         assert!(false);
-        //     }
-        // }
-    }
+
 }
