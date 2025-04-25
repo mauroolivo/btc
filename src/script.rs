@@ -3,6 +3,7 @@ use std::{io::{Cursor, Read, Error}};
 use crate::helpers::varint::{encode_varint, read_varint};
 use core::fmt;
 use num::{BigUint, ToPrimitive};
+use sha2::{Digest, Sha256};
 use crate::helpers::endianness::{int_to_little_endian, little_endian_to_int};
 use crate::helpers::op_codes::*;
 
@@ -236,25 +237,27 @@ impl Script {
                 // witness program version 0 rule. if stack cmds are:
                 // 0 <32 byte hash> this is p2wsh
                 if stack.len() == 2 && stack[0] == b"" && stack[1].len() == 32 {
-                    // let s256 = stack.pop();
-                    // stack.pop();
-                    // cmds.extend(witness.clone().unwrap().pop());
-                    // let witness_script = witness.clone().unwrap().pop();
-                    // if s256 != sha2 sha256(witness_script):  # <5>
-                    //     print('bad sha256 {} vs {}'.format
-                    //     (s256.hex(), sha256(witness_script).hex()))
-                    // return False
-                    // stream = BytesIO(encode_varint(len(witness_script))
-                    //     + witness_script)
-                    // witness_script_cmds = Script.parse(stream).cmds  # <6>
-                    // cmds.extend(witness_script_cmds)
+                    let s256 = stack.pop();
+                    stack.pop();
+                    cmds.extend(witness.clone().unwrap().pop());
+                    let witness_script = witness.clone().unwrap().pop().unwrap();
+                    let digest = Sha256::digest(witness_script.clone()).to_vec();
+                    if s256.clone().unwrap() != digest {
+                        println!("bad sha256 script digest: {}, s256: {}", hex::encode(digest), hex::encode(s256.clone().unwrap()));
+                        return false
+                    }
+                    let mut w_script: Vec<u8> = vec![];
+                    w_script.extend(encode_varint(witness_script.clone().len() as u64).unwrap());
+                    w_script.extend(witness_script);
+                    let mut stream = Cursor::new(w_script);
+                    let witness_script_cmds = Script::parse(stream.by_ref()).unwrap();
+                    cmds.extend(witness_script_cmds.cmds)
                 }
             }
         }
         if stack.len() == 0 {
             return false;
         }
-        //if stack.pop().unwrap() == b"" {
         if stack.remove(0) == b"" {
             return false;
         }
