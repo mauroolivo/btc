@@ -237,9 +237,12 @@ impl Script {
                 // witness program version 0 rule. if stack cmds are:
                 // 0 <32 byte hash> this is p2wsh
                 if stack.len() == 2 && stack[0] == b"" && stack[1].len() == 32 {
+
                     let s256 = stack.pop();
                     stack.pop();
-                    cmds.extend(witness.clone().unwrap().pop());
+                    let mut w = witness.clone().unwrap();
+                    w.pop();
+                    cmds.extend(w);
                     let witness_script = witness.clone().unwrap().pop().unwrap();
                     let digest = Sha256::digest(witness_script.clone()).to_vec();
                     if s256.clone().unwrap() != digest {

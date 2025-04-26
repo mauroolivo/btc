@@ -397,13 +397,8 @@ impl Tx {
                 z = self.sig_hash_bip143(input_index, None, None);
                 witness = tx_in.clone().witness;
 
-                println!("z: {}", z);
-                let w1 = &witness.clone().unwrap()[0];
-                let w2 = &witness.clone().unwrap()[1];
-                println!("witness 0 : {:?}", hex::encode(w1));
-                println!("witness 1 : {:?}", hex::encode(w2));
-
             } else if prev_script_pubkey.is_p2wsh_script_pubkey() {
+
                 let mut raw_witness: Vec<u8> = Vec::new();
                 let mut part = tx_in.witness.clone().unwrap();
                 let cmd: Vec<u8> = part.pop().unwrap();
@@ -418,7 +413,18 @@ impl Tx {
                 witness = None;
             }
         }
-        let combined_script = tx_in.script_sig() + prev_script_pubkey;
+
+        let ss = tx_in.script_sig();
+        let pp = prev_script_pubkey;
+        println!("z: {}", z);
+        let w1 = &witness.clone().unwrap()[0];
+        let w2 = &witness.clone().unwrap()[1];
+        println!("witness 0 : {:?}", hex::encode(w1));
+        println!("witness 1 : {:?}", hex::encode(w2));
+        println!("ss: {}", ss.clone());
+        println!("pp: {}", pp.clone());
+
+        let combined_script = ss + pp;
         combined_script.evaluate(&z.clone(), &witness.clone())
     }
     pub fn verify(&mut self) -> bool {
@@ -810,4 +816,22 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn test_verify_p2wsh() {
+        let tx_id = "78457666f82c28aa37b74b506745a7c7684dc7842a52a457b09f09446721e11c";
+        let testnet = true;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(mut tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(e) => {
+                println!("{:?}", e);
+                assert!(false);
+            }
+        }
+    }
+
 }
