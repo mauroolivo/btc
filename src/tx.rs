@@ -833,5 +833,21 @@ mod tests {
             }
         }
     }
-
+    #[test]
+    fn test_verify_p2sh_p2wsh() {
+        let tx_id = "954f43dbb30ad8024981c07d1f5eb6c9fd461e2cf1760dd1283f052af746fc88";
+        let testnet = true;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(mut tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(e) => {
+                println!("{:?}", e);
+                assert!(false);
+            }
+        }
+    }
 }
