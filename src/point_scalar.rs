@@ -88,7 +88,7 @@ mod tests {
     use super::*;
     #[test]
     #[should_panic]
-    fn point_off() {
+    fn test_point_off() {
         let _p3 = PointScalar::new(
             &Some(BigInt::from(77i32)),
             &Some(BigInt::from(77i32)),
@@ -97,7 +97,7 @@ mod tests {
         );
     }
     #[test]
-    fn point_eq() {
+    fn test_point_eq() {
         let p1 = PointScalar::new(
             &Some(BigInt::from(3i32)),
             &Some(BigInt::from(-7i32)),
@@ -114,7 +114,7 @@ mod tests {
         assert!(p2 == p2);
     }
     #[test]
-    fn point_add_0() {
+    fn test_point_add_0() {
         let p1 = PointScalar::new(
             &None,
             &None,
@@ -138,7 +138,7 @@ mod tests {
         assert_eq!(p2.clone() + p3.clone(), p1.clone());
     }
     #[test]
-    fn point_add_1() {
+    fn test_point_add_1() {
         let p1 = PointScalar::new(
             &Some(BigInt::from(3i32)),
             &Some(BigInt::from(7i32)),
@@ -160,7 +160,7 @@ mod tests {
         assert_eq!(p1 + p2, p3);
     }
     #[test]
-    fn point_add_2() {
+    fn test_point_add_2() {
         let p1 = PointScalar::new(
             &Some(BigInt::from(-1i32)),
             &Some(BigInt::from(-1i32)),

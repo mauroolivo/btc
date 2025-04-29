@@ -250,7 +250,7 @@ mod tests {
     use num::Num;
     use super::*;
     #[test]
-    fn point1_on() {
+    fn test_point1_on() {
         let p = 223u32;
         let _p3 = Point::new(
             &Some(FieldElement::new(&BigUint::from(192u32), &BigUint::from(p))),
@@ -261,7 +261,7 @@ mod tests {
 
     }
     #[test]
-    fn point2_on() {
+    fn test_point2_on() {
         let p = 223u32;
         let _p3 = Point::new(
             &Some(FieldElement::new(&BigUint::from(17u32), &BigUint::from(p))),
@@ -272,7 +272,7 @@ mod tests {
 
     }
     #[test]
-    fn point3_on() {
+    fn test_point3_on() {
         let p = 223u32;
         let _p3 = Point::new(
             &Some(FieldElement::new(&BigUint::from(1u32), &BigUint::from(p))),
@@ -284,7 +284,7 @@ mod tests {
     }
     #[test]
     #[should_panic]
-    fn point1_off() {
+    fn test_point1_off() {
         let p = 223u32;
         let _p3 = Point::new(
             &Some(FieldElement::new(&BigUint::from(200u32), &BigUint::from(p))),
@@ -295,7 +295,7 @@ mod tests {
     }
     #[test]
     #[should_panic]
-    fn point2_off() {
+    fn test_point2_off() {
         let p = 223u32;
         let _p3 = Point::new(
             &Some(FieldElement::new(&BigUint::from(42u32), &BigUint::from(p))),
@@ -305,7 +305,7 @@ mod tests {
         );
     }
     #[test]
-    fn add() {
+    fn test_add() {
         let p = 223u32;
         let a = FieldElement::new(&BigUint::from(0u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(7u32), &BigUint::from(p));
@@ -349,7 +349,7 @@ mod tests {
         }
     }
     #[test]
-    fn scalar_mul_1() {
+    fn test_scalar_mul_1() {
         let p = 223u32;
         let point = Point::new(
             &Some(FieldElement::new(&BigUint::from(15u32), &BigUint::from(p))),
@@ -366,7 +366,7 @@ mod tests {
         assert_eq!(p_inf, point * BigUint::from(7u32));
     }
     #[test]
-    fn scalar_mul_2() {
+    fn test_scalar_mul_2() {
         let p = 223u32;
         let point = Point::new(
             &Some(FieldElement::new(&BigUint::from(47u32), &BigUint::from(p))),
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(point2, point * BigUint::from(20u32));
     }
     #[test]
-    fn new_secp256k1() {
+    fn test_new_secp256k1() {
         let s = secp256k1::Secp256k1::new();
         let _p = Point::new_secp256k1(
             &Some(FieldElement::new(&s.gx, &s.p)),
@@ -391,7 +391,7 @@ mod tests {
         );
     }
     #[test]
-    fn ord() {
+    fn test_ord() {
         let s = secp256k1::Secp256k1::new();
         let p = Point::new_secp256k1(
             &Some(FieldElement::new(&s.gx, &s.p)),
@@ -405,7 +405,7 @@ mod tests {
         //assert_eq!(p * s.N, p_inf)
     }
     #[test]
-    fn verify1() {
+    fn test_verify1() {
         let s = secp256k1::Secp256k1::new();
         let p = Point::new_secp256k1(
             &Some(FieldElement::new(&BigUint::from_str_radix("887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c", 16).unwrap(), &s.p)),
@@ -421,7 +421,7 @@ mod tests {
 
     }
     #[test]
-    fn verify2() {
+    fn test_verify2() {
         let s = secp256k1::Secp256k1::new();
         let p = Point::new_secp256k1(
             &Some(FieldElement::new(&BigUint::from_str_radix("887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c", 16).unwrap(), &s.p)),
@@ -436,7 +436,7 @@ mod tests {
         assert_eq!(p.verify(&z, &sig), true)
     }
     #[test]
-    fn sec_1() {
+    fn test_sec_1() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
 
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(sec, hex::decode(sec_compressed).unwrap());
     }
     #[test]
-    fn sec_2() {
+    fn test_sec_2() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
         let point = generator.clone() * BigUint::from(5000u32);
@@ -520,7 +520,7 @@ mod tests {
         );
     }
     #[test]
-    fn sec_3() {
+    fn test_sec_3() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
         let point = generator.clone() * BigUint::from(5001u32);
@@ -543,7 +543,7 @@ mod tests {
         );
     }
     #[test]
-    fn sec_4() {
+    fn test_sec_4() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
         let point = generator.clone() * BigUint::from(5000u32);
@@ -554,7 +554,7 @@ mod tests {
         assert_eq!(Point::parse(&point.sec(false)), point);
     }
     #[test]
-    fn sec_5() {
+    fn test_sec_5() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
         let point = generator.clone() * BigUint::from(5001u32);
@@ -565,7 +565,7 @@ mod tests {
         assert_eq!(Point::parse(&point.sec(true)), point);
     }
     #[test]
-    fn address_1() {
+    fn test_address_1() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
         let point = generator.clone() * BigUint::from(5002u32);
@@ -590,7 +590,7 @@ mod tests {
 
     }
     #[test]
-    fn address_2() {
+    fn test_address_2() {
         let s256 = secp256k1::Secp256k1::new();
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));
 
