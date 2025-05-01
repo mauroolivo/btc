@@ -7,8 +7,11 @@ Inspired by Jimmy Song's library [Programming Bitcoin](https://github.com/jimmys
 ### Book Chapters Implemented
 
 - [X] Chapter 1: Finite Fields
+  - [Field Element](https://github.com/mauroolivo/btc/blob/main/src/field_element.rs)
 - [X] Chapter 2: Elliptic Curves
+  - [Secp256k1](https://github.com/mauroolivo/btc/blob/main/src/secp256k1.rs) 
 - [X] Chapter 3: Elliptic Curve Cryptography
+  - [Point](https://github.com/mauroolivo/btc/blob/main/src/point.rs) 
 - [X] Chapter 4: Serialization
 - [X] Chapter 5: Transactions
 - [X] Chapter 6: Script
