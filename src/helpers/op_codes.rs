@@ -97,6 +97,7 @@ pub fn op_code_names() -> HashMap<u8, &'static str> {
     op_code_names.insert(OP_CHECKSIG, "OP_CHECKSIG");
     op_code_names.insert(OP_CHECKSIGVERIFY, "OP_CHECKSIGVERIFY");
     op_code_names.insert(OP_CHECKMULTISIG, "OP_CHECKMULTISIG");
+    op_code_names.insert(OP_CHECKSEQUENCEVERIFY, "OP_CHECKSEQUENCEVERIFY");
 
     op_code_names
 }
