@@ -76,7 +76,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn sign() {
+    fn test_sign() {
         let s256 = Secp256k1::new();
 
         let generator = Point::new_secp256k1(&Some(FieldElement::new(&s256.gx, &s256.p)), &Some(FieldElement::new(&s256.gy, &s256.p)));

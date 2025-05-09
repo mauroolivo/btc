@@ -133,7 +133,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn eq_ne() {
+    fn test_eq_ne() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(2u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(2u32), &BigUint::from(p));
@@ -144,7 +144,7 @@ mod tests {
         assert!(a == b)
     }
     #[test]
-    fn add() {
+    fn test_add() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(2u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(15u32), &BigUint::from(p));
@@ -154,7 +154,7 @@ mod tests {
         assert_eq!(a+b, FieldElement::new(&BigUint::from(7u32), &BigUint::from(p)));
     }
     #[test]
-    fn sub() {
+    fn test_sub() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(29u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(4u32), &BigUint::from(p));
@@ -164,14 +164,14 @@ mod tests {
         assert_eq!(a-b, FieldElement::new(&BigUint::from(16u32), &BigUint::from(p)));
     }
     #[test]
-    fn mul() {
+    fn test_mul() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(24u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(19u32), &BigUint::from(p));
         assert_eq!(a*b, FieldElement::new(&BigUint::from(22u32), &BigUint::from(p)));
     }
     #[test]
-    fn pow() {
+    fn test_pow() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(17u32), &BigUint::from(p));
         assert_eq!(a.pow(BigInt::from(3u32)), FieldElement::new(&BigUint::from(15u32), &BigUint::from(p)));
@@ -180,14 +180,14 @@ mod tests {
         assert_eq!(a.pow(BigInt::from(5u32)) * b, FieldElement::new(&BigUint::from(16u32), &BigUint::from(p)));
     }
     #[test]
-    fn div() {
+    fn test_div() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(3u32), &BigUint::from(p));
         let b = FieldElement::new(&BigUint::from(24u32), &BigUint::from(p));
         assert_eq!(a / b, FieldElement::new(&BigUint::from(4u32), &BigUint::from(p)));
     }
     #[test]
-    fn neg_pow() {
+    fn test_neg_pow() {
         let p = 31u32;
         let a = FieldElement::new(&BigUint::from(17u32), &BigUint::from(p));
         assert_eq!(a.pow(BigInt::from(-3i32)), FieldElement::new(&BigUint::from(29u32), &BigUint::from(p)));

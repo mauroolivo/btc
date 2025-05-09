@@ -416,13 +416,13 @@ impl Tx {
 
         let ss = tx_in.script_sig();
         let pp = prev_script_pubkey;
-        println!("z: {}", z);
-        let w1 = &witness.clone().unwrap()[0];
-        let w2 = &witness.clone().unwrap()[1];
-        println!("witness 0 : {:?}", hex::encode(w1));
-        println!("witness 1 : {:?}", hex::encode(w2));
-        println!("ss: {}", ss.clone());
-        println!("pp: {}", pp.clone());
+        // println!("z: {}", z);
+        // let w1 = &witness.clone().unwrap()[0];
+        // let w2 = &witness.clone().unwrap()[1];
+        // println!("witness 0 : {:?}", hex::encode(w1));
+        // println!("witness 1 : {:?}", hex::encode(w2));
+        // println!("ss: {}", ss.clone());
+        // println!("pp: {}", pp.clone());
 
         let combined_script = ss + pp;
         combined_script.evaluate(&z.clone(), &witness.clone())
