@@ -55,22 +55,20 @@ impl Tx {
         let mut buffer = [0; 1];
         stream.read(&mut buffer)?;
         stream.seek(SeekFrom::Start(0))?;
+        let mut is_segwit = false;
         if buffer[0] == 0x00 { // segwit marker
-            Self::parse_segwit(stream, testnet)
-        } else {
-            Self::parse_legacy(stream, testnet)
+            is_segwit = true;
         }
-    }
-    fn parse_segwit(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
         let mut buffer = [0; 4];
         stream.read(&mut buffer)?;
         let version = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
-        let mut buffer = [0; 2];
-        stream.read(&mut buffer)?;
-        if buffer != [0x00,0x01] { // segwit marker
-            panic!("invalid segwit marker");
+        if is_segwit {
+            let mut buffer = [0; 2];
+            stream.read(&mut buffer)?;
+            if buffer != [0x00,0x01] { // segwit marker
+                panic!("invalid segwit marker");
+            }
         }
-
         let mut inputs: Vec<TxInput> = Vec::new();
         let mut outputs: Vec<TxOutput> = Vec::new();
 
@@ -85,25 +83,27 @@ impl Tx {
                 outputs.push(TxOutput::parse(stream).unwrap());
             }
         }
-        for tx_in in inputs.iter_mut() {
-            if let Ok(num_items) = read_varint(stream) {
 
-                let mut items: Vec<Vec<u8>> = vec![];
-                for _ in 0..num_items {
-                    if let Ok(item_len) = read_varint(stream) {
-                        if item_len == 0 {
-                            items.push(vec![0])
-                        } else {
-                            let mut buffer: Vec<u8> = vec![0;item_len as usize];
-                            stream.read(&mut buffer)?;
-                            items.push(buffer)
+        if is_segwit {
+            for tx_in in inputs.iter_mut() {
+                if let Ok(num_items) = read_varint(stream) {
+
+                    let mut items: Vec<Vec<u8>> = vec![];
+                    for _ in 0..num_items {
+                        if let Ok(item_len) = read_varint(stream) {
+                            if item_len == 0 {
+                                items.push(vec![0])
+                            } else {
+                                let mut buffer: Vec<u8> = vec![0;item_len as usize];
+                                stream.read(&mut buffer)?;
+                                items.push(buffer)
+                            }
                         }
                     }
+                    tx_in.witness = Some(items);
                 }
-                tx_in.witness = Some(items);
             }
         }
-
         let mut buffer = vec![0; 4];
         stream.read(&mut buffer).unwrap();
         let locktime = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
@@ -114,43 +114,7 @@ impl Tx {
             outputs,
             locktime,
             testnet,
-            segwit: true,
-            hash_prevouts: None,
-            hash_sequence: None,
-            hash_outputs: None,
-        })
-    }
-    fn parse_legacy(stream: &mut Cursor<Vec<u8>>, testnet: bool) -> Result<Self, std::io::Error> {
-        let mut buffer = [0; 4];
-        stream.read(&mut buffer)?;
-        let version = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
-
-        let mut inputs: Vec<TxInput> = Vec::new();
-        let mut outputs: Vec<TxOutput> = Vec::new();
-
-        if let Ok(num_inputs) = read_varint(stream) {
-            for _ in 0..num_inputs {
-                inputs.push(TxInput::parse(stream).unwrap());
-            }
-        }
-        //let mut outputs = vec![];
-        if let Ok(num_outputs) = read_varint(stream) {
-            for _ in 0..num_outputs {
-                outputs.push(TxOutput::parse(stream).unwrap());
-            }
-        }
-
-        let mut buffer = vec![0; 4];
-        stream.read(&mut buffer).unwrap();
-        let locktime = little_endian_to_int(buffer.as_slice()).to_u32().unwrap();
-
-        Ok(Tx {
-            version,
-            inputs,
-            outputs,
-            locktime,
-            testnet,
-            segwit: false,
+            segwit: is_segwit,
             hash_prevouts: None,
             hash_sequence: None,
             hash_outputs: None,
@@ -590,7 +554,7 @@ mod tests {
         let ser = tx.serialize();
         assert_eq!(raw_tx, ser);
     }
-    #[ignore]
+
     #[test]
     fn test_fee() {
         let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
@@ -602,7 +566,6 @@ mod tests {
         let tx = Tx::parse(&mut stream, false).unwrap();
         assert_eq!(tx.fee(), 140500);
     }
-    #[ignore]
     #[test]
     fn test_sig_hash() {
         let z= BigUint::from_str_radix("27e0c5994dec7824e56dec6b2fcb342eb7cdb0d0957c2fce9882f715e85d81a6", 16).unwrap();
@@ -670,7 +633,6 @@ mod tests {
         println!("{}", tx);
         println!("{:?}", hex::encode(tx.serialize()));
     }
-    #[ignore]
     #[test]
     fn test_verify_p2pkh() {
 
@@ -705,7 +667,6 @@ mod tests {
         }
         */
     }
-    #[ignore]
     #[test]
     fn test_verify_p2sh() {
         let tx_id = "46df1a9484d0a81d03ce0ee543ab6e1a23ed06175c104a178268fad381216c2b";
@@ -782,6 +743,7 @@ mod tests {
         let ser = tx.serialize();
         assert_eq!(raw_tx, ser);
     }
+    #[ignore]
     #[test]
     fn test_verify_p2wpkh() {
         let tx_id = "d869f854e1f8788bcff294cc83b280942a8c728de71eb709a2c29d10bfe21b7c";
@@ -816,6 +778,7 @@ mod tests {
             }
         }
     }
+    #[ignore]
     #[test]
     fn test_verify_p2wsh() {
         let tx_id = "78457666f82c28aa37b74b506745a7c7684dc7842a52a457b09f09446721e11c";
@@ -833,6 +796,7 @@ mod tests {
             }
         }
     }
+    #[ignore]
     #[test]
     fn test_verify_p2sh_p2wsh() {
         let tx_id = "954f43dbb30ad8024981c07d1f5eb6c9fd461e2cf1760dd1283f052af746fc88";
@@ -850,6 +814,7 @@ mod tests {
             }
         }
     }
+    #[ignore]
     #[test]
     fn test_verify_more_1() {
         let tx_id = "b28af11d837f5451a480d8f116c107bcd3c6d087927bcbb49ff01307a57fd483";

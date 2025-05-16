@@ -33,7 +33,6 @@ mod tests {
     use crate::network::verack_message::VerAckMessage;
     use crate::network::version_message::VersionMessage;
 
-    #[ignore]
     #[test]
     fn test_socket_flow() {
 

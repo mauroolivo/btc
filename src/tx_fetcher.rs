@@ -88,7 +88,6 @@ impl TxFetcher {
 mod tests {
 
     use super::*;
-    #[ignore]
     #[tokio::test]
     async fn fetch_async_test() {
         // segwit testnet, to do c202201f6c18beb46710e5d3a46bd8775c57648cd9d7aef1be441d170ca8cdb5
@@ -106,7 +105,6 @@ mod tests {
             }
         }
     }
-    #[ignore]
     #[test]
     fn fetch_sync_test() {
         let tx_id = "ee51510d7bbabe28052038d1deb10c03ec74f06a79e21913c6fcf48d56217c87"; // main legacy
