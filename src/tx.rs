@@ -883,4 +883,38 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn test_verify_more_5() {
+        let tx_id = "8670ed595dfee2c2fd10419f00711eed7ee7c3ea7c3a3a6ed3bccc3b835a2795";
+        let testnet = false;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(mut tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(e) => {
+                println!("{:?}", e);
+                assert!(false);
+            }
+        }
+    }
+    #[test]
+    fn test_verify_more_6() {
+        let tx_id = "755b3d43ce8cab110bd1c05217fb1bc110f28ff74af7b1bdc01e3e7588350029";
+        let testnet = false;
+        let tf = TxFetcher::new(testnet);
+        let result = tf.fetch_sync(tx_id);
+        match result {
+            Ok(mut tx) => {
+                println!("{:?}", tx);
+                assert_eq!(tx.verify(), true);
+            }
+            Err(e) => {
+                println!("{:?}", e);
+                assert!(false);
+            }
+        }
+    }
 }
