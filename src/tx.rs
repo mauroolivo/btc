@@ -917,4 +917,31 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn test_tx_id_1() {
+        // non witness
+        let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
+        let mut stream = Cursor::new(raw_tx.clone());
+        let tx = Tx::parse(&mut stream, false).unwrap();
+        println!("{}", tx.id());
+        let ser = tx.serialize();
+        assert_eq!(raw_tx, ser);
+    }
+    #[test]
+    fn test_tx_id_2() {
+        // witness
+        let raw_tx = hex::decode("02000000000101477d4a9123b137d3b31293706be757bbc654f806df128dcf9fb0579097dd75920000000000fdffffff020cf6000000000000160014c33e63a8dbdcc8250d80a4b2aab51c68ebce04ffdc6cea4c00000000160014192e80ed2c7c412bdc2a6c8f371d15cb90f3c85b02473044022079deccd3f44f8a8690a6df844e6b1c4357796eb292c46cf23c394faf8388814d02206a362276932c0b2e6265464b7566434732ed63b8dd0c0f97a85e6b6c14b8d2a3012103b01bd095f648ea829f000207087f16622431077bb5cc0875225ada601375c88500000000").unwrap();
+        let mut stream = Cursor::new(raw_tx.clone());
+        let tx = Tx::parse(&mut stream, true).unwrap();
+        println!("{}", tx.id());
+        let ser = tx.serialize();
+        assert_eq!(raw_tx, ser);
+        //calculate txid
+        let txid = "a894b5961f3258ac3f14a9ea3698a7db6537b393687a92bb42e54521d9d34d4e".to_string();
+        let wTxid = "91b24afe5af5b9aeb0dc13dbbd682720c98aa56eb97e1514328581d8b0bb31e0".to_string();
+
+        // todo fix witness tx id
+        assert_eq!(tx.id(), wTxid);
+    }
+
 }
