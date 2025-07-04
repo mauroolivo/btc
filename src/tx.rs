@@ -211,7 +211,7 @@ impl Tx {
         self.hash_outputs.clone()
     }
     fn hash(&self) -> Vec<u8> {
-        let bytes = self.serialize_legacy();
+        let bytes = self.serialize();
         let mut hash = hash256(&bytes);
         hash.reverse();
         hash.to_vec()
