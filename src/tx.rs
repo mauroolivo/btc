@@ -120,17 +120,19 @@ impl Tx {
             hash_outputs: None,
         })
     }
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self, skip_witness: bool) -> Vec<u8> {
         if self.segwit {
-            self.serialize_segwit()
+            self.serialize_segwit(skip_witness)
         } else {
             self.serialize_legacy()
         }
     }
-    pub fn serialize_segwit(&self) -> Vec<u8> {
+    pub fn serialize_segwit(&self, skip_witness: bool) -> Vec<u8> {
         let mut result = Vec::new();
         result.extend(int_to_little_endian(BigUint::from(self.version), 4));
-        result.extend(vec![0x00, 0x01]);
+        if skip_witness == false {
+            result.extend(vec![0x00, 0x01]);
+        }
         result.extend(encode_varint(self.inputs.len() as u64).unwrap());
         for tx_in in self.tx_ins() {
             result.extend(tx_in.serialize());
@@ -139,20 +141,22 @@ impl Tx {
         for tx_out in self.tx_outs() {
             result.extend(tx_out.serialize());
         }
-        for tx_in in self.tx_ins() {
-            match tx_in.witness {
-                Some(witness) => {
-                    result.extend(int_to_little_endian(BigUint::from(witness.len()), 1));
-                    for item in witness {
-                        if item.len() == 1 {
-                            result.extend(int_to_little_endian(BigUint::from(item[0]), 1))
-                        } else {
-                            result.extend(encode_varint(item.len() as u64).unwrap());
-                            result.extend(item);
+        if skip_witness == false {
+            for tx_in in self.tx_ins() {
+                match tx_in.witness {
+                    Some(witness) => {
+                        result.extend(int_to_little_endian(BigUint::from(witness.len()), 1));
+                        for item in witness {
+                            if item.len() == 1 {
+                                result.extend(int_to_little_endian(BigUint::from(item[0]), 1))
+                            } else {
+                                result.extend(encode_varint(item.len() as u64).unwrap());
+                                result.extend(item);
+                            }
                         }
                     }
+                    None => {}
                 }
-                None => {}
             }
         }
         result.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
@@ -172,8 +176,15 @@ impl Tx {
         result.extend(int_to_little_endian(BigUint::from(self.locktime), 4));
         result
     }
-    pub fn id(&self) -> String {
-        hex::encode(self.hash())
+    pub fn tx_id(&self) -> String {
+        if self.segwit {
+            hex::encode(self.hash(true))
+        } else {
+            hex::encode(self.hash(false))
+        }
+    }
+    pub fn w_tx_id(&self) -> String {
+        hex::encode(self.hash(false))
     }
     pub fn hash_prevouts(&mut self) -> Option<Vec<u8>> {
         let mut all_prevouts: Vec<u8> = vec![];
@@ -210,8 +221,13 @@ impl Tx {
         }
         self.hash_outputs.clone()
     }
-    fn hash(&self) -> Vec<u8> {
-        let bytes = self.serialize();
+    fn hash(&self, skip_witness: bool) -> Vec<u8> {
+        let mut bytes: Vec<u8> = vec![];
+        if skip_witness {
+            bytes = self.serialize(skip_witness);
+        } else {
+            bytes = self.serialize(false);
+        }
         let mut hash = hash256(&bytes);
         hash.reverse();
         hash.to_vec()
@@ -454,7 +470,7 @@ impl fmt::Display for Tx {
         write!(
             f,
             "id: {}, version: {}, inputs: {}, outputs: {}, locktime: {}",
-            self.id(),
+            self.tx_id(),
             self.version,
             inputs_string,
             outputs_string,
@@ -542,7 +558,7 @@ mod tests {
         let raw_tx = hex::decode("010000000456919960ac691763688d3d3bcea9ad6ecaf875df5339e148a1fc61c6ed7a069e010000006a47304402204585bcdef85e6b1c6af5c2669d4830ff86e42dd205c0e089bc2a821657e951c002201024a10366077f87d6bce1f7100ad8cfa8a064b39d4e8fe4ea13a7b71aa8180f012102f0da57e85eec2934a82a585ea337ce2f4998b50ae699dd79f5880e253dafafb7feffffffeb8f51f4038dc17e6313cf831d4f02281c2a468bde0fafd37f1bf882729e7fd3000000006a47304402207899531a52d59a6de200179928ca900254a36b8dff8bb75f5f5d71b1cdc26125022008b422690b8461cb52c3cc30330b23d574351872b7c361e9aae3649071c1a7160121035d5c93d9ac96881f19ba1f686f15f009ded7c62efe85a872e6a19b43c15a2937feffffff567bf40595119d1bb8a3037c356efd56170b64cbcc160fb028fa10704b45d775000000006a47304402204c7c7818424c7f7911da6cddc59655a70af1cb5eaf17c69dadbfc74ffa0b662f02207599e08bc8023693ad4e9527dc42c34210f7a7d1d1ddfc8492b654a11e7620a0012102158b46fbdff65d0172b7989aec8850aa0dae49abfb84c81ae6e5b251a58ace5cfeffffffd63a5e6c16e620f86f375925b21cabaf736c779f88fd04dcad51d26690f7f345010000006a47304402200633ea0d3314bea0d95b3cd8dadb2ef79ea8331ffe1e61f762c0f6daea0fabde022029f23b3e9c30f080446150b23852028751635dcee2be669c2a1686a4b5edf304012103ffd6f4a67e94aba353a00882e563ff2722eb4cff0ad6006e86ee20dfe7520d55feffffff0251430f00000000001976a914ab0c0b2e98b1ab6dbf67d4750b0a56244948a87988ac005a6202000000001976a9143c82d7df364eb6c75be8c80df2b3eda8db57397088ac46430600").unwrap();
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, true).unwrap();
-        let ser = tx.serialize();
+        let ser = tx.serialize(false);
         assert_eq!(raw_tx, ser);
     }
     #[test]
@@ -550,8 +566,8 @@ mod tests {
         let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, false).unwrap();
-        println!("{}", tx.id());
-        let ser = tx.serialize();
+        println!("{}", tx.tx_id());
+        let ser = tx.serialize(false);
         assert_eq!(raw_tx, ser);
     }
 
@@ -631,7 +647,7 @@ mod tests {
         let tx_in_update = TxInput::new(tx_in.prev_tx(), tx_in.prev_index(), script_sig, tx_in.sequence());
         let tx = Tx::new(tx.version(), vec![tx_in_update], tx.tx_outs(), tx.locktime, tx.testnet, tx.segwit);
         println!("{}", tx);
-        println!("{:?}", hex::encode(tx.serialize()));
+        println!("{:?}", hex::encode(tx.serialize(false)));
     }
     #[test]
     fn test_verify_p2pkh() {
@@ -731,7 +747,7 @@ mod tests {
         let raw_tx = hex::decode("020000000001011c20e4848e7992a8c23deff629105174d36286234429b4f6878a52a14c87931a0100000000fdffffff02cf21180000000000160014853ec3166860371ee67b7754ff85e13d7a0d669850330500000000001976a914fc71e34a661ea03b46b4e2414dac463d3328e12188ac02473044022007b6e8bb9f1cc0e3526ae158cfbd663debf56826249c3439f8967a0a7dd4244a022004dac7a6d79f37283ca739b2ec4ed502ec208eb05287fdc2a2a6df1ca83c10d0012103e5e444515d5566e7def1332d7dded8755ed9a2f1c8c968a3de1e72369a2ae7603d600a00").unwrap();
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, true).unwrap();
-        let ser = tx.serialize();
+        let ser = tx.serialize(false);
         assert_eq!(raw_tx, ser);
     }
     #[test]
@@ -739,8 +755,8 @@ mod tests {
         let raw_tx = hex::decode("0100000000010115e180dc28a2327e687facc33f10f2a20da717e5548406f7ae8b4c811072f8560100000000ffffffff0100b4f505000000001976a9141d7cd6c75c2e86f4cbf98eaed221b30bd9a0b92888ac02483045022100df7b7e5cda14ddf91290e02ea10786e03eb11ee36ec02dd862fe9a326bbcb7fd02203f5b4496b667e6e281cc654a2da9e4f08660c620a1051337fa8965f727eb19190121038262a6c6cec93c2d3ecd6c6072efea86d02ff8e3328bbd0242b20af3425990ac00000000").unwrap();
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, false).unwrap();
-        println!("{}", tx.id());
-        let ser = tx.serialize();
+        println!("{}", tx.tx_id());
+        let ser = tx.serialize(false);
         assert_eq!(raw_tx, ser);
     }
     #[ignore]
@@ -923,8 +939,8 @@ mod tests {
         let raw_tx = hex::decode("0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600").unwrap();
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, false).unwrap();
-        println!("{}", tx.id());
-        let ser = tx.serialize();
+        println!("{}", tx.tx_id());
+        let ser = tx.serialize(false);
         assert_eq!(raw_tx, ser);
     }
     #[test]
@@ -933,15 +949,14 @@ mod tests {
         let raw_tx = hex::decode("02000000000101477d4a9123b137d3b31293706be757bbc654f806df128dcf9fb0579097dd75920000000000fdffffff020cf6000000000000160014c33e63a8dbdcc8250d80a4b2aab51c68ebce04ffdc6cea4c00000000160014192e80ed2c7c412bdc2a6c8f371d15cb90f3c85b02473044022079deccd3f44f8a8690a6df844e6b1c4357796eb292c46cf23c394faf8388814d02206a362276932c0b2e6265464b7566434732ed63b8dd0c0f97a85e6b6c14b8d2a3012103b01bd095f648ea829f000207087f16622431077bb5cc0875225ada601375c88500000000").unwrap();
         let mut stream = Cursor::new(raw_tx.clone());
         let tx = Tx::parse(&mut stream, true).unwrap();
-        println!("{}", tx.id());
-        let ser = tx.serialize();
+        let ser = tx.serialize(false);
         assert_eq!(raw_tx, ser);
         //calculate txid
-        let txid = "a894b5961f3258ac3f14a9ea3698a7db6537b393687a92bb42e54521d9d34d4e".to_string();
-        let wTxid = "91b24afe5af5b9aeb0dc13dbbd682720c98aa56eb97e1514328581d8b0bb31e0".to_string();
+        let tx_id = "a894b5961f3258ac3f14a9ea3698a7db6537b393687a92bb42e54521d9d34d4e".to_string();
+        let w_tx_id = "91b24afe5af5b9aeb0dc13dbbd682720c98aa56eb97e1514328581d8b0bb31e0".to_string();
 
-        // todo fix witness tx id
-        assert_eq!(tx.id(), wTxid);
+        assert_eq!(tx.tx_id(), tx_id);
+        assert_eq!(tx.w_tx_id(), w_tx_id);
     }
 
 }

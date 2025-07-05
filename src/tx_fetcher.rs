@@ -98,7 +98,7 @@ mod tests {
 
         match result.await {
             Ok(result) => {
-                assert_eq!(result.id(), tx_id);
+                assert_eq!(result.tx_id(), tx_id);
             }
             Err(e) => {
                 println!("Error: {}", e);
@@ -112,7 +112,7 @@ mod tests {
         let result = tf.fetch_sync(tx_id);
         match result {
             Ok(result) => {
-                assert_eq!(result.id(), tx_id);
+                assert_eq!(result.tx_id(), tx_id);
             }
             Err(e) => {
                 println!("Error: {}", e);
