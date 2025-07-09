@@ -958,5 +958,19 @@ mod tests {
         assert_eq!(tx.tx_id(), tx_id);
         assert_eq!(tx.w_tx_id(), w_tx_id);
     }
+    #[test]
+    fn test_tx_id_3() {
+        // witness
+        let raw_tx = hex::decode("01000000000101ce0840aa3e0ace82c6fe2b7c3b4893ad6e8cc2c28f5d89447cfdab0f980770c50000000023220020973cfd44e60501c38320ab1105fb3ee3916d2952702e3c8cb4cbb7056aa6b47fffffffff01d1fb0000000000001976a914142b5b5e77897361be0a40032db2fbb6b28973f488ac0400473044022047ebba593cba4048da04316b9fb6c076d95d17175d7560edc93868a7d170767502203d0ce939ae462ca685a15f5fd3a64b7a1793cb10473665d5bedd3322c55a2b1001473044022022a8a0ae1f80934abb38d4f8c3febf6f5c5c43e7e70460aa71f9a895aaea4d950220023b8f4d2fd90abdbe6f80c9bcb2b38c7326e5e9e0f3b1ea25a5499d240cacb20169522103591da02bf7c80dc5d0edee4bbbfad7e58320785e3e54d4dab117152361f7002c21027ea2bc65ce49dcd748e4e41a0c8881be388b9182ad5e47579a0de0119803827b2103c5fdaf887f76119a73a7f738d5d4a451ff07bbbc83422c529452d8a36ae59e3953ae00000000").unwrap();
+        let mut stream = Cursor::new(raw_tx.clone());
+        let tx = Tx::parse(&mut stream, true).unwrap();
+        let ser = tx.serialize(false);
+        assert_eq!(raw_tx, ser);
+        //calculate txid
+        let tx_id = "55c7c71c63b87478cd30d401e7ca5344a2e159dc8d6990df695c7e0cb2f82783".to_string();
+        let w_tx_id = "75fd722f95aaa5426c99f352b9803a73d5a92c7a838d7384bcd33c2aa0f63b97".to_string();
 
+        assert_eq!(tx.tx_id(), tx_id);
+        assert_eq!(tx.w_tx_id(), w_tx_id);
+    }
 }
