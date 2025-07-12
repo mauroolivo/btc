@@ -177,14 +177,7 @@ impl Tx {
         result
     }
     pub fn tx_id(&self) -> String {
-        if self.segwit {
-            hex::encode(self.hash(true))
-        } else {
-            hex::encode(self.hash(false))
-        }
-    }
-    pub fn w_tx_id(&self) -> String {
-        hex::encode(self.hash(false))
+        hex::encode(self.hash(true))
     }
     pub fn hash_prevouts(&mut self) -> Option<Vec<u8>> {
         let mut all_prevouts: Vec<u8> = vec![];
@@ -223,11 +216,7 @@ impl Tx {
     }
     fn hash(&self, skip_witness: bool) -> Vec<u8> {
         let mut bytes: Vec<u8> = vec![];
-        if skip_witness {
-            bytes = self.serialize(skip_witness);
-        } else {
-            bytes = self.serialize(false);
-        }
+        bytes = self.serialize(skip_witness);
         let mut hash = hash256(&bytes);
         hash.reverse();
         hash.to_vec()
@@ -953,10 +942,10 @@ mod tests {
         assert_eq!(raw_tx, ser);
         //calculate txid
         let tx_id = "a894b5961f3258ac3f14a9ea3698a7db6537b393687a92bb42e54521d9d34d4e".to_string();
-        let w_tx_id = "91b24afe5af5b9aeb0dc13dbbd682720c98aa56eb97e1514328581d8b0bb31e0".to_string();
+        let hash = "91b24afe5af5b9aeb0dc13dbbd682720c98aa56eb97e1514328581d8b0bb31e0".to_string();
 
         assert_eq!(tx.tx_id(), tx_id);
-        assert_eq!(tx.w_tx_id(), w_tx_id);
+        assert_eq!(hex::encode(tx.hash(false)), hash);
     }
     #[test]
     fn test_tx_id_3() {
@@ -968,9 +957,9 @@ mod tests {
         assert_eq!(raw_tx, ser);
         //calculate txid
         let tx_id = "55c7c71c63b87478cd30d401e7ca5344a2e159dc8d6990df695c7e0cb2f82783".to_string();
-        let w_tx_id = "75fd722f95aaa5426c99f352b9803a73d5a92c7a838d7384bcd33c2aa0f63b97".to_string();
+        let hash = "75fd722f95aaa5426c99f352b9803a73d5a92c7a838d7384bcd33c2aa0f63b97".to_string();
 
         assert_eq!(tx.tx_id(), tx_id);
-        assert_eq!(tx.w_tx_id(), w_tx_id);
+        assert_eq!(hex::encode(tx.hash(false)), hash);
     }
 }
